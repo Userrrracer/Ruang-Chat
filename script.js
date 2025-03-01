@@ -991,6 +991,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (document.getElementById('chatMessages')) {
             changeChannel('emel');
         }
+        
+        // Update online users list on page load
+        updateOnlineUsersList();
 
         // Toggle user status
         const userStatus = document.getElementById('userStatus');
@@ -1009,38 +1012,83 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // Function to update online users list
+        function updateOnlineUsersList() {
+            const usersList = document.getElementById('onlineUsers');
+            if (!usersList) return;
+            
+            // Clear current list
+            usersList.innerHTML = '';
+            
+            // Add current logged-in user first
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser) {
+                const currentUserItem = document.createElement('li');
+                currentUserItem.className = 'list-group-item d-flex align-items-center';
+                currentUserItem.innerHTML = `
+                    <span class="online-indicator"></span>
+                    ${currentUser.username} (Anda)
+                    <span class="badge bg-success ms-auto">Online</span>
+                `;
+                usersList.appendChild(currentUserItem);
+            }
+            
+            // Add admin user
+            const adminUserItem = document.createElement('li');
+            adminUserItem.className = 'list-group-item d-flex align-items-center';
+            adminUserItem.innerHTML = `
+                <span class="online-indicator"></span>
+                Raymondo
+                <span class="badge bg-primary ms-auto">Admin</span>
+            `;
+            usersList.appendChild(adminUserItem);
+            
+            // Get other logged-in users from localStorage (in a real app, this would come from server)
+            // For demo, we'll check all users in the system and randomly make some of them "online"
+            const allUsers = JSON.parse(localStorage.getItem('users')) || [];
+            const onlineUsers = allUsers.filter(user => 
+                user.username !== currentUser?.username && 
+                Math.random() > 0.5 // Randomly select some users as online for demo
+            ).slice(0, 3); // Limit to max 3 other online users for demo
+            
+            onlineUsers.forEach(user => {
+                const userItem = document.createElement('li');
+                userItem.className = 'list-group-item d-flex align-items-center';
+                userItem.innerHTML = `
+                    <span class="online-indicator"></span>
+                    ${user.username}
+                `;
+                usersList.appendChild(userItem);
+            });
+            
+            // If no other users are online
+            if (onlineUsers.length === 0 && !currentUser) {
+                const noUsersItem = document.createElement('li');
+                noUsersItem.className = 'list-group-item text-center text-muted';
+                noUsersItem.textContent = 'Tidak ada pengguna online';
+                usersList.appendChild(noUsersItem);
+            }
+        }
+        
         // Refresh users list
         const refreshUsersBtn = document.getElementById('refreshUsers');
         if (refreshUsersBtn) {
             refreshUsersBtn.addEventListener('click', function() {
-                // Simulate refreshing user list
-                const usersList = document.getElementById('onlineUsers');
-                if (usersList) {
-                    // Show loading state
-                    this.textContent = 'Menyegarkan...';
-                    this.disabled = true;
-
-                    setTimeout(() => {
-                        // Add a random user
-                        const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-
-                        const newUserItem = document.createElement('li');
-                        newUserItem.className = 'list-group-item d-flex align-items-center';
-                        newUserItem.innerHTML = `
-                            <span class="online-indicator"></span>
-                            ${randomUser}
-                        `;
-
-                        usersList.appendChild(newUserItem);
-
-                        // Reset button
-                        this.textContent = 'Refresh Pengguna';
-                        this.disabled = false;
-
-                        // Show success message in chat
-                        addChatMessage('Daftar pengguna berhasil diperbarui!', false, 'Admin', true);
-                    }, 1000);
-                }
+                // Show loading state
+                this.textContent = 'Menyegarkan...';
+                this.disabled = true;
+                
+                // After a brief delay, update the user list
+                setTimeout(() => {
+                    updateOnlineUsersList();
+                    
+                    // Reset button
+                    this.textContent = 'Refresh Pengguna';
+                    this.disabled = false;
+                    
+                    // Show success message in chat
+                    addChatMessage('Daftar pengguna berhasil diperbarui!', false, 'Admin', true);
+                }, 1000);
             });
         }
     }
