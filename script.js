@@ -2,13 +2,15 @@
 const registerForm = document.getElementById('registerForm');
 const loginForm = document.getElementById('loginForm');
 const categoryList = document.getElementById('categoryList');
-const postList = document.getElementById('postList');
-const newPostBtn = document.getElementById('newPostBtn');
-const searchForm = document.querySelector('form[role="search"]');
+const chatInput = document.getElementById('chatInput');
+const sendMessageBtn = document.getElementById('sendMessageBtn');
+const chatMessages = document.getElementById('chatMessages');
+const loginPrompt = document.getElementById('loginPrompt');
+const onlineCount = document.getElementById('onlineCount');
 
-
-// Random user names for simulation
-const randomUsers = ['User123', 'ChatFan', 'ForumLover', 'Diskusi01', 'ToressUser'];
+// Daftar pengguna online
+let onlineUsers = [];
+let currentChannel = 'emel';
 
 // Function to save user data in localStorage
 if (registerForm) {
@@ -49,7 +51,7 @@ if (registerForm) {
         users.push({
             username,
             email,
-            password // In a real app, you should hash this password
+            password
         });
 
         // Save updated users array
@@ -61,35 +63,6 @@ if (registerForm) {
         }, 1500);
     });
 }
-
-// Helper functions for validation and notifications
-function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
-}
-
-function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger mt-3';
-    errorDiv.textContent = message;
-    
-    const form = document.getElementById('registerForm');
-    form.insertBefore(errorDiv, form.firstChild);
-    
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 3000);
-}
-
-function showSuccess(message) {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'alert alert-success mt-3';
-    successDiv.textContent = message;
-    
-    const form = document.getElementById('registerForm');
-    form.insertBefore(successDiv, form.firstChild);
-}
-
 
 // Function to handle user login
 if (loginForm) {
@@ -115,8 +88,12 @@ if (loginForm) {
             // Save logged in user info
             localStorage.setItem('currentUser', JSON.stringify({
                 username: user.username,
-                email: user.email
+                email: user.email,
+                lastSeen: new Date().toISOString()
             }));
+
+            // Add user to online users list
+            addOnlineUser(user);
 
             showLoginSuccess('Login berhasil! Mengarahkan ke forum...');
             setTimeout(() => {
@@ -128,1001 +105,356 @@ if (loginForm) {
     });
 }
 
-// Helper functions for login notifications
-function showLoginError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger mt-3';
-    errorDiv.textContent = message;
-    
-    const form = document.getElementById('loginForm');
-    form.insertBefore(errorDiv, form.firstChild);
-    
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 3000);
-}
-
-function showLoginSuccess(message) {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'alert alert-success mt-3';
-    successDiv.textContent = message;
-    
-    const form = document.getElementById('loginForm');
-    form.insertBefore(successDiv, form.firstChild);
-}
-
-
-// Check auth status
+// Check auth status and enable/disable chat
 function checkAuth() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
-    // If on forum page and not logged in, redirect to login
-    if (window.location.pathname.includes('forum.html') && !currentUser) {
-        alert('Silakan login terlebih dahulu.');
-        window.location.href = 'login.html';
+    if (currentUser) {
+        // Enable chat input and buttons
+        if (chatInput) chatInput.disabled = false;
+        if (sendMessageBtn) sendMessageBtn.disabled = false;
+        document.querySelectorAll('.emoji-btn').forEach(btn => btn.disabled = false);
+        document.querySelector('#fileInput').disabled = false;
+
+        // Hide login prompt
+        if (loginPrompt) loginPrompt.style.display = 'none';
+
+        // Add user to online users
+        addOnlineUser(currentUser);
+
+        return true;
+    } else {
+        // Disable chat input and buttons
+        if (chatInput) chatInput.disabled = true;
+        if (sendMessageBtn) sendMessageBtn.disabled = true;
+        document.querySelectorAll('.emoji-btn').forEach(btn => btn.disabled = true);
+        document.querySelector('#fileInput').disabled = true;
+
+        // Show login prompt
+        if (loginPrompt) loginPrompt.style.display = 'block';
+
         return false;
     }
-
-    // Hide login/register links if user is logged in
-    if (currentUser) {
-        const loginLinks = document.querySelectorAll('a[href="login.html"], a[href="register.html"]');
-        loginLinks.forEach(link => {
-            const parentLi = link.closest('li');
-            if (parentLi) {
-                parentLi.style.display = 'none';
-            }
-        });
-
-        // Add logout button if it doesn't exist
-        if (!document.getElementById('logoutBtn')) {
-            const navPills = document.querySelector('.nav-pills');
-            if (navPills) {
-                const logoutLi = document.createElement('li');
-                logoutLi.className = 'nav-item';
-                logoutLi.innerHTML = `<a href="#" id="logoutBtn" class="nav-link active">Logout (${currentUser.username})</a>`;
-                navPills.appendChild(logoutLi);
-
-                // Add event listener to logout button
-                document.getElementById('logoutBtn').addEventListener('click', function() {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'index.html';
-                });
-            }
-        }
-
-        // Update user profile section
-        updateUserProfile(currentUser);
-    }
-
-    return true;
 }
 
-// Update user profile information
-function updateUserProfile(user) {
-    const profileSection = document.getElementById('userProfileSection');
-    if (!profileSection) return;
+// Update online users list
+function updateOnlineUsers() {
+    const usersList = document.getElementById('onlineUsers');
+    if (!usersList) return;
 
-    // Get user stats
-    const posts = loadPosts();
-    const userPosts = posts.filter(post => post.author === user.username);
-    const userComments = posts.flatMap(post => 
-        post.comments ? post.comments.filter(comment => comment.author === user.username) : []
-    );
-    const userLikes = posts.flatMap(post => 
-        post.likes ? post.likes.filter(like => like.username === user.username) : []
-    );
-
-    // Calculate activity statistics
-    const lastActive = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    // Create a random join date (for demo purposes)
-    const joinDate = new Date();
-    joinDate.setMonth(joinDate.getMonth() - Math.floor(Math.random() * 12));
-    const formattedJoinDate = joinDate.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-
-    // Generate random reputation points
-    const reputationPoints = Math.floor(Math.random() * 100) + userPosts.length * 5 + userComments.length * 2 + userLikes.length;
-
-    // Get user's level based on activity
-    const userLevel = getUserLevel(reputationPoints);
-
-    profileSection.innerHTML = `
-        <div class="text-center mb-3">
-            <div class="avatar-placeholder mb-2">
-                <span class="display-4">${user.username.charAt(0).toUpperCase()}</span>
-            </div>
-            <h4 class="text-dark">${user.username}</h4>
-            <span class="badge bg-${getLevelColor(userLevel)}">${userLevel}</span>
-        </div>
-        <div class="user-stats">
-            <div class="list-group">
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Email</span>
-                    <span class="text-primary">${user.email}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Bergabung Sejak</span>
-                    <span>${formattedJoinDate}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Terakhir Aktif</span>
-                    <span>${lastActive}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Jumlah Diskusi</span>
-                    <span class="badge bg-primary">${userPosts.length}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Jumlah Komentar</span>
-                    <span class="badge bg-info">${userComments.length}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Jumlah Suka Diberikan</span>
-                    <span class="badge bg-success">${userLikes.length}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Poin Reputasi</span>
-                    <span class="badge bg-warning text-dark">${reputationPoints}</span>
-                </div>
-            </div>
-        </div>
-        <div class="mt-3">
-            <button class="btn btn-sm btn-outline-primary w-100" id="editProfileBtn">Edit Profil</button>
-        </div>
-    `;
-
-    // Add event listener to edit profile button
-    const editProfileBtn = document.getElementById('editProfileBtn');
-    if (editProfileBtn) {
-        editProfileBtn.addEventListener('click', () => {
-            editUserProfile(user);
-        });
-    }
-
-    // Add CSS for avatar placeholder
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .avatar-placeholder {
-            width: 80px;
-            height: 80px;
-            background-color: #6c757d;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Get user level based on reputation points
-function getUserLevel(points) {
-    if (points < 10) return "Pemula";
-    if (points < 30) return "Anggota";
-    if (points < 60) return "Kontributor";
-    if (points < 100) return "Aktif";
-    if (points < 200) return "Pro";
-    return "Master";
-}
-
-// Get badge color based on level
-function getLevelColor(level) {
-    switch(level) {
-        case "Pemula": return "secondary";
-        case "Anggota": return "info";
-        case "Kontributor": return "primary";
-        case "Aktif": return "success";
-        case "Pro": return "warning";
-        case "Master": return "danger";
-        default: return "secondary";
-    }
-}
-
-// Edit user profile
-function editUserProfile(user) {
-    // Mock implementation - in a real app this would be a proper form
-    const newUsername = prompt("Ubah username:", user.username);
-    if (newUsername && newUsername.trim() !== "") {
-        // Update user in localStorage
-        user.username = newUsername.trim();
-        localStorage.setItem('currentUser', JSON.stringify(user));
-
-        // Update UI
-        document.getElementById('currentUsername').textContent = user.username;
-        updateUserProfile(user);
-
-        // Update logout button
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.textContent = `Logout (${user.username})`;
-        }
-
-        alert("Profil berhasil diperbarui!");
-    }
-}
-
-// Sample categories data with post counts
-const categories = [
-    { id: 1, name: 'sekolah', postCount: 5 },
-    { id: 2, name: 'running', postCount: 3 },
-    { id: 3, name: 'Musik', postCount: 7 },
-    { id: 4, name: 'all', postCount: 15 }
-];
-
-// Load and save posts to localStorage
-function loadPosts() {
-    return JSON.parse(localStorage.getItem('posts')) || [];
-}
-
-function savePosts(posts) {
-    localStorage.setItem('posts', JSON.stringify(posts));
-}
-
-// Initialize posts if empty
-function initializePosts() {
-    const posts = loadPosts();
-    if (posts.length === 0) {
-        // Sample post
-        const samplePost = {
-            id: 1,
-            title: "gimana web nya?",
-            content: "Bagaimana cara belajar programming yang efektif untuk pemula?",
-            author: "Raymondo",
-            category: "sekolah",
-            timestamp: new Date().toISOString(),
-            comments: [],
-            likes: []
-        };
-        posts.push(samplePost);
-        savePosts(posts);
-    }
-}
-
-// Display posts
-function displayPosts() {
-    const postListElem = document.getElementById('postList');
-    if (!postListElem) return;
-
-    postListElem.innerHTML = ''; // Clear existing posts
-
-    const posts = loadPosts();
-
-    posts.forEach(post => {
-        const postElement = createPostElement(post);
-        postListElem.appendChild(postElement);
-    });
-}
-
-// Create post element
-function createPostElement(post) {
-    const postElement = document.createElement('div');
-    postElement.className = 'card mb-3';
-    postElement.dataset.postId = post.id;
-
-    // Format date
-    const postDate = new Date(post.timestamp);
-    const timeAgo = getTimeAgo(postDate);
-
-    // Generate comments HTML
-    let commentsHtml = '';
-    if (post.comments && post.comments.length > 0) {
-        commentsHtml = `
-            <div class="comments-section mt-3">
-                <h6 class="text-dark">Komentar:</h6>
-                <div class="list-group">
-                    ${post.comments.map(comment => `
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">${comment.author}</h6>
-                                <small>${getTimeAgo(new Date(comment.timestamp))}</small>
-                            </div>
-                            <p class="mb-1">${comment.text}</p>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
+    usersList.innerHTML = '';
+    onlineUsers.forEach(user => {
+        const userItem = document.createElement('li');
+        userItem.className = 'list-group-item d-flex align-items-center';
+        userItem.innerHTML = `
+            <span class="online-indicator"></span>
+            ${user.username}
+            ${user.isAdmin ? '<span class="badge bg-primary ms-auto">Admin</span>' : ''}
         `;
-    }
+        usersList.appendChild(userItem);
+    });
 
-    postElement.innerHTML = `
-        <div class="card-header d-flex justify-content-between">
-            <span>${post.author}</span>
-            <small>${timeAgo}</small>
-        </div>
-        <div class="card-body">
-            <h5 class="card-title text-dark">${post.title}</h5>
-            <p class="card-text text-dark">${post.content}</p>
-            <div class="d-flex justify-content-between">
-                <span class="badge bg-secondary">${post.category}</span>
-                <div>
-                    <button class="btn btn-sm btn-outline-primary comment-btn" data-post-id="${post.id}">Komentar (${post.comments ? post.comments.length : 0})</button>
-                    <button class="btn btn-sm btn-outline-success like-btn" data-post-id="${post.id}">Suka (${post.likes ? post.likes.length : 0})</button>
-                </div>
-            </div>
-            ${commentsHtml}
-        </div>
-    `;
-
-    // Add event listeners to the buttons
-    setTimeout(() => {
-        const commentBtn = postElement.querySelector('.comment-btn');
-        const likeBtn = postElement.querySelector('.like-btn');
-
-        if (commentBtn) {
-            commentBtn.addEventListener('click', handleCommentClick);
-        }
-
-        if (likeBtn) {
-            likeBtn.addEventListener('click', handleLikeClick);
-        }
-    }, 0);
-
-    return postElement;
-}
-
-// Create new post
-function createNewPost() {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser) {
-        alert('Silakan login terlebih dahulu.');
-        return;
-    }
-
-    // In a real app, this would be a modal or new page
-    const title = prompt('Judul diskusi:');
-    const content = prompt('Isi diskusi:');
-    const category = prompt('Kategori (emel, sekolah, running, musik, all):');
-
-    if (title && content && category) {
-        const posts = loadPosts();
-
-        // Create new post
-        const newPost = {
-            id: Date.now(), // Use timestamp as ID
-            title,
-            content,
-            author: currentUser.username,
-            category,
-            timestamp: new Date().toISOString(),
-            comments: [],
-            likes: []
-        };
-
-        // Add to posts list
-        posts.unshift(newPost); // Add to beginning
-        savePosts(posts);
-
-        // Update UI
-        displayPosts();
+    // Update online count
+    if (onlineCount) {
+        onlineCount.textContent = onlineUsers.length;
     }
 }
 
-// Utility function to get time ago
-function getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-
-    let interval = seconds / 31536000;
-    if (interval > 1) {
-        return Math.floor(interval) + " tahun yang lalu";
+// Add user to online users list
+function addOnlineUser(user) {
+    if (!onlineUsers.find(u => u.username === user.username)) {
+        onlineUsers.push({
+            username: user.username,
+            isAdmin: user.username === 'Raymondo',
+            lastSeen: new Date().toISOString()
+        });
+        updateOnlineUsers();
     }
-
-    interval = seconds / 2592000;
-    if (interval > 1) {
-        return Math.floor(interval) + " bulan yang lalu";
-    }
-
-    interval = seconds / 86400;
-    if (interval > 1) {
-        return Math.floor(interval) + " hari yang lalu";
-    }
-
-    interval = seconds / 3600;
-    if (interval > 1) {
-        return Math.floor(interval) + " jam yang lalu";
-    }
-
-    interval = seconds / 60;
-    if (interval > 1) {
-        return Math.floor(interval) + " menit yang lalu";
-    }
-
-    return "Baru saja";
 }
 
-// Forum chat functionality
-// Current active channel
-let currentChannel = 'emel';
+// Remove user from online users list
+function removeOnlineUser(username) {
+    onlineUsers = onlineUsers.filter(u => u.username !== username);
+    updateOnlineUsers();
+}
 
-// Load and save messages to localStorage
+// Load messages from localStorage
 function loadMessages(channel) {
-    const allMessages = JSON.parse(localStorage.getItem('chatMessages')) || {};
-    return allMessages[channel] || [];
+    return JSON.parse(localStorage.getItem(`messages_${channel}`)) || [];
 }
 
+// Save messages to localStorage
 function saveMessages(channel, messages) {
-    const allMessages = JSON.parse(localStorage.getItem('chatMessages')) || {};
-    allMessages[channel] = messages;
-    localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+    localStorage.setItem(`messages_${channel}`, JSON.stringify(messages));
 }
 
-// Function to format time
-function formatTime() {
+// Format time for messages
+function formatTime(date) {
     const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const messageDate = new Date(date);
+    
+    if (messageDate.toDateString() === now.toDateString()) {
+        return messageDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return messageDate.toLocaleDateString('id-ID', { 
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 }
 
-// Function to add chat message
-function addChatMessage(message, isCurrentUser = true, username = null, isSystem = false, saveToStorage = true) {
-    const chatMessages = document.getElementById('chatMessages');
-    if (!chatMessages) return;
+// Format message text
+function formatMessageText(text) {
+    // Convert URLs to clickable links
+    text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+    
+    // Convert emojis to larger size
+    text = text.replace(/(\p{Emoji})/gu, '<span class="large-emoji">$1</span>');
+    
+    return text;
+}
+
+// Add message to chat
+function addMessage(message, isCurrentUser = true) {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser && isCurrentUser) return;
 
     const messageElement = document.createElement('div');
-    const time = formatTime();
-    const messageId = Date.now().toString(); // Unique ID for the message
+    messageElement.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
+    
+    const time = new Date();
+    const messageId = Date.now().toString();
     messageElement.dataset.messageId = messageId;
 
-    if (isSystem) {
-        messageElement.className = 'message system-message';
-        messageElement.innerHTML = `
-            <div class="message-content">${message}</div>
-        `;
-    } else {
-        messageElement.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
-
-        const currentUser = JSON.parse(localStorage.getItem('currentUser')) || { username: 'Guest' };
-        const displayName = username || (isCurrentUser ? currentUser.username : 'Lain');
-
-        // Only show delete button for user's own messages
-        const deleteButton = isCurrentUser ? 
-            `<button class="btn-delete-message" data-message-id="${messageId}">
-                <i class="bi bi-trash"></i>
-             </button>` : '';
-
-        messageElement.innerHTML = `
-            <div class="message-header">
-                <strong>${displayName}</strong>
-                <div class="message-actions">
-                    <small>${time}</small>
-                    ${deleteButton}
-                </div>
-            </div>
-            <div class="message-content">${message}</div>
-        `;
-
-        // Save message to localStorage
-        if (saveToStorage && !isSystem) {
-            const messages = loadMessages(currentChannel);
-            messages.push({
-                id: messageId,
-                message,
-                isCurrentUser,
-                username: displayName,
-                timestamp: new Date().toISOString(),
-                time
-            });
-            saveMessages(currentChannel, messages);
-        }
-
-        // Add event listener for delete button
-        setTimeout(() => {
-            const deleteBtn = messageElement.querySelector('.btn-delete-message');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', function() {
-                    deleteMessage(messageId);
-                });
-            }
-        }, 0);
-    }
+    // Format message text
+    const formattedText = formatMessageText(message.text);
+    
+    messageElement.innerHTML = `
+        <div class="message-header">
+            <strong>${isCurrentUser ? currentUser.username : message.username}</strong>
+            <small class="message-time">${formatTime(time)}</small>
+        </div>
+        <div class="message-content">${formattedText}</div>
+        <div class="message-footer">
+            ${isCurrentUser ? '<span class="message-status">✓✓</span>' : ''}
+            ${isCurrentUser ? `
+                <button class="btn-delete-message" onclick="deleteMessage('${messageId}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    // Add animation for new messages
+    messageElement.style.opacity = '0';
+    messageElement.style.transform = 'translateY(20px)';
+    messageElement.style.transition = 'all 0.3s ease';
+    
+    requestAnimationFrame(() => {
+        messageElement.style.opacity = '1';
+        messageElement.style.transform = 'translateY(0)';
+    });
 
     chatMessages.appendChild(messageElement);
-
-    // Scroll to the bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Save message
+    const messages = loadMessages(currentChannel);
+    messages.push({
+        id: messageId,
+        text: message.text,
+        username: isCurrentUser ? currentUser.username : message.username,
+        timestamp: time.toISOString(),
+        isCurrentUser,
+        isRead: isCurrentUser
+    });
+    saveMessages(currentChannel, messages);
+
+    // Update badges
+    updateChannelBadges();
 }
 
-// Function to delete a message
+// Delete message
 function deleteMessage(messageId) {
-    // Confirm deletion
     if (confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
-        // Remove from UI
-        const messageElement = document.querySelector(`.message[data-message-id="${messageId}"]`);
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
         if (messageElement) {
-            // Fade out effect
             messageElement.style.opacity = '0';
             messageElement.style.transform = 'scale(0.8)';
             
             setTimeout(() => {
                 messageElement.remove();
                 
-                // Show deletion notification
-                const systemMessage = document.createElement('div');
-                systemMessage.className = 'message system-message deletion-notification';
-                systemMessage.innerHTML = `<div class="message-content">Pesan telah dihapus</div>`;
-                
-                const chatMessages = document.getElementById('chatMessages');
-                if (chatMessages) {
-                    chatMessages.appendChild(systemMessage);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    
-                    // Remove notification after a delay
-                    setTimeout(() => {
-                        systemMessage.style.opacity = '0';
-                        setTimeout(() => systemMessage.remove(), 500);
-                    }, 3000);
+                // Update messages in localStorage
+                const messages = loadMessages(currentChannel);
+                const messageIndex = messages.findIndex(msg => msg.id === messageId);
+                if (messageIndex !== -1) {
+                    messages.splice(messageIndex, 1);
+                    saveMessages(currentChannel, messages);
                 }
             }, 300);
         }
-        
-        // Remove from localStorage
-        const messages = loadMessages(currentChannel);
-        const messageIndex = messages.findIndex(msg => msg.id === messageId);
-        
-        if (messageIndex !== -1) {
-            messages.splice(messageIndex, 1);
-            saveMessages(currentChannel, messages);
-            
-            // Update category post counts
-            updateCategoryPostCounts();
-        }
     }
 }
 
-// Function to change channel
-function changeChannel(channel) {
-    currentChannel = channel;
-    const channelNameElement = document.getElementById('currentChannel');
-    if (channelNameElement) {
-        channelNameElement.textContent = channel.charAt(0).toUpperCase() + channel.slice(1);
-    }
+// Update channel badges
+function updateChannelBadges() {
+    const channels = document.querySelectorAll('#channelList .list-group-item');
+    channels.forEach(channelItem => {
+        const channel = channelItem.getAttribute('data-channel');
+        const badge = channelItem.querySelector('.badge');
+        
+        if (badge) {
+            if (channel === currentChannel) {
+                // Reset badge for active channel
+                badge.textContent = '0';
+                badge.classList.remove('bg-danger');
+            } else {
+                // Count unread messages for other channels
+                const messages = loadMessages(channel);
+                const unreadCount = messages.filter(msg => !msg.isRead).length;
+                badge.textContent = unreadCount;
+                
+                // Add visual indicator for unread messages
+                if (unreadCount > 0) {
+                    badge.classList.add('bg-danger');
+                } else {
+                    badge.classList.remove('bg-danger');
+                }
+            }
+        }
+    });
+}
 
-    // Clear chat messages
-    const chatMessages = document.getElementById('chatMessages');
-    if (chatMessages) {
-        chatMessages.innerHTML = '';
-    }
-
-    // Add welcome message
-    addChatMessage(`Selamat datang di channel ${channel}!`, false, 'Admin', true, false);
-
-    // Load messages from localStorage
+// Mark messages as read
+function markMessagesAsRead(channel) {
     const messages = loadMessages(channel);
-
-    if (messages.length === 0) {
-        // Add welcome message if no messages
-        const channelMessages = {
-            emel: [
-                { user: 'Admin', message: 'Silahkan diskusi apapun di sini!' }
-            ],
-            sekolah: [
-                { user: 'Admin', message: 'Channel untuk diskusi sekolah' }
-            ],
-            running: [
-                { user: 'Admin', message: 'Channel untuk diskusi olahraga' }
-            ],
-            musik: [
-                { user: 'Admin', message: 'Channel untuk diskusi musik' }
-            ],
-            all: [
-                { user: 'Admin', message: 'Channel untuk diskusi all topik' }
-            ]
-        };
-
-        // Add sample messages and save them
-        if (channelMessages[channel]) {
-            channelMessages[channel].forEach(msg => {
-                addChatMessage(msg.message, false, msg.user, false, true);
-            });
-        }
-    } else {
-        // Display saved messages
-        messages.forEach(msg => {
-            // Make sure we use the message ID if it exists
-            const messageElement = document.createElement('div');
-            const messageId = msg.id || Date.now().toString();
-            messageElement.dataset.messageId = messageId;
-            
-            addChatMessage(
-                msg.message,
-                msg.isCurrentUser,
-                msg.username,
-                false,
-                false // Don't save again
-            );
-        });
-    }
-
-    // Update active channel in UI
-    const channelItems = document.querySelectorAll('#channelList .list-group-item');
-    channelItems.forEach(item => {
-        if (item.getAttribute('data-channel') === channel) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-
-    // Update category post counts
-    updateCategoryPostCounts();
-}
-
-// Update category post counts
-function updateCategoryPostCounts() {
-    const channelItems = document.querySelectorAll('#channelList .list-group-item');
-    const badges = document.querySelectorAll('#channelList .badge');
-
-    channelItems.forEach((item, index) => {
-        const channel = item.getAttribute('data-channel');
-        const messages = loadMessages(channel);
-        if (badges[index]) {
-            badges[index].textContent = messages.length;
-        }
-    });
+    const updatedMessages = messages.map(msg => ({
+        ...msg,
+        isRead: true
+    }));
+    saveMessages(channel, updatedMessages);
+    updateChannelBadges();
 }
 
 // Handle sending message
-function handleSendMessage() {
-    const chatInput = document.getElementById('chatInput');
-    if (!chatInput) return;
-
-    const message = chatInput.value.trim();
-    if (message) {
-        // Add user message
-        addChatMessage(message, true);
-
-        // Clear input
-        chatInput.value = '';
-
-        // Update category post counts
-        updateCategoryPostCounts();
-
-        // Simulate response in certain channels
-        if (Math.random() > 0.6) {
-            setTimeout(() => {
-                const channelResponses = {
-                    emel: [
-                        'Halo! Apa kabar?',
-                        'Selamat datang di forum kami!',
-                        'Terima kasih atas partisipasinya!'
-                    ],
-                    sekolah: [
-                        'Saya juga sedang belajar!',
-                        'Pelajaran apa yang kamu sukai?',
-                        'Mau belajar bersama?'
-                    ],
-                    running: [
-                        'Saya suka lari pagi.',
-                        'Sudah berapa KM lari minggu ini?',
-                        'Olahraga itu menyehatkan!'
-                    ],
-                    musik: [
-                        'Musik apa yang kamu suka?',
-                        'Saya suka mendengarkan pop.',
-                        'Ada rekomendasi lagu baru?'
-                    ],
-                    all: [
-                        'Halo! Apa kabar?',
-                        'Selamat datang di forum kami!',
-                        'Terima kasih atas partisipasinya!'
-                    ]
-                };
-
-                const responses = channelResponses[currentChannel] || channelResponses.emel;
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-
-                addChatMessage(randomResponse, false, randomUser);
-
-                // Update category post counts after response
-                updateCategoryPostCounts();
-            }, 1000 + Math.random() * 2000);
-        }
-    }
-}
-
-// Function to add emoji to input
-function addEmojiToInput(emoji) {
-    const chatInput = document.getElementById('chatInput');
-    if (chatInput) {
-        chatInput.value += emoji;
-        chatInput.focus();
-    }
-}
-
-// Handle comment button clicks
-function handleCommentClick(event) {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser) {
-        alert('Silakan login terlebih dahulu untuk menambahkan komentar.');
-        return;
-    }
-
-    const postId = parseInt(event.target.getAttribute('data-post-id'));
-    const commentText = prompt('Tambahkan komentar Anda:');
-
-    if (commentText && commentText.trim()) {
-        const posts = loadPosts();
-        const postIndex = posts.findIndex(post => post.id === postId);
-
-        if (postIndex !== -1) {
-            // Add comment to post
-            if (!posts[postIndex].comments) {
-                posts[postIndex].comments = [];
-            }
-
-            posts[postIndex].comments.push({
-                id: Date.now(),
-                author: currentUser.username,
-                text: commentText,
-                timestamp: new Date().toISOString()
-            });
-
-            // Save posts
-            savePosts(posts);
-
-            // Update UI
-            displayPosts();
-        }
-    }
-}
-
-// Handle like button clicks
-function handleLikeClick(event) {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser) {
-        alert('Silakan login terlebih dahulu untuk menyukai postingan.');
-        return;
-    }
-
-    const postId = parseInt(event.target.getAttribute('data-post-id'));
-    const posts = loadPosts();
-    const postIndex = posts.findIndex(post => post.id === postId);
-
-    if (postIndex !== -1) {
-        // Initialize likes array if it doesn't exist
-        if (!posts[postIndex].likes) {
-            posts[postIndex].likes = [];
-        }
-
-        // Check if user already liked this post
-        const userLikeIndex = posts[postIndex].likes.findIndex(like => like.username === currentUser.username);
-
-        if (userLikeIndex === -1) {
-            // Add like
-            posts[postIndex].likes.push({
-                username: currentUser.username,
-                timestamp: new Date().toISOString()
-            });
-            alert(`Anda menyukai postingan ini!`);
-        } else {
-            // Remove like
-            posts[postIndex].likes.splice(userLikeIndex, 1);
-            alert(`Anda membatalkan suka pada postingan ini.`);
-        }
-
-        // Save posts
-        savePosts(posts);
-
-        // Update UI
-        displayPosts();
-    }
-}
-
-// Function to handle file uploads
-function handleFileUpload() {
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput && fileInput.files.length > 0) {
-        const fileName = fileInput.files[0].name;
-        addChatMessage(`Mengunggah file: ${fileName}...`, true);
-
-        // Simulate upload progress
-        setTimeout(() => {
-            addChatMessage(`File ${fileName} berhasil diunggah!`, false, 'Admin', true);
-        }, 1500);
-
-        // Reset file input
-        fileInput.value = '';
-    }
-}
-
-// Event listeners
-// Function to handle search
-function handleSearch(event) {
-    event.preventDefault();
-    const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
-    
-    if (!searchQuery) return;
-    
-    // Check if we're on the forum page
-    if (window.location.pathname.includes('forum.html')) {
-        // Search posts
-        const posts = loadPosts();
-        const filteredPosts = posts.filter(post => 
-            post.title.toLowerCase().includes(searchQuery) || 
-            post.content.toLowerCase().includes(searchQuery) ||
-            post.author.toLowerCase().includes(searchQuery) ||
-            post.category.toLowerCase().includes(searchQuery)
-        );
-        
-        // Clear post list
-        const postListElem = document.getElementById('postList');
-        if (postListElem) {
-            postListElem.innerHTML = '';
+if (sendMessageBtn) {
+    sendMessageBtn.addEventListener('click', () => {
+        const message = chatInput.value.trim();
+        if (message) {
+            addMessage({ text: message }, true);
+            chatInput.value = '';
             
-            if (filteredPosts.length > 0) {
-                // Display filtered posts
-                filteredPosts.forEach(post => {
-                    const postElement = createPostElement(post);
-                    postListElem.appendChild(postElement);
-                });
-            } else {
-                // No results found
-                postListElem.innerHTML = `
-                    <div class="alert alert-info">
-                        Tidak ada hasil untuk pencarian "${searchQuery}". 
-                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="displayPosts()">Tampilkan Semua</button>
-                    </div>
-                `;
-            }
+            // Play send sound
+            const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAABoYPkyeYAAAAAAAAAAAAAAAAAAAA//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxBYDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxDIDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+            audio.play();
         }
-    } else {
-        // Redirect to forum page with search query
-        window.location.href = `forum.html?search=${encodeURIComponent(searchQuery)}`;
-    }
+    });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize posts
-    initializePosts();
+// Handle enter key in chat input
+if (chatInput) {
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessageBtn.click();
+        }
+    });
+}
 
-    // Check auth status
-    const isLoggedIn = checkAuth();
+// Initialize chat
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
     
-    // Add search functionality
-    const searchForm = document.querySelector('form[role="search"]');
-    if (searchForm) {
-        searchForm.addEventListener('submit', handleSearch);
+    // Load existing messages
+    const messages = loadMessages(currentChannel);
+    messages.forEach(message => {
+        addMessage(message, message.isCurrentUser);
+    });
+
+    // Handle channel switching
+    const channels = document.querySelectorAll('#channelList .list-group-item');
+    channels.forEach(channel => {
+        channel.addEventListener('click', () => {
+            const channelName = channel.getAttribute('data-channel');
+            currentChannel = channelName;
+            
+            // Update active channel
+            channels.forEach(c => c.classList.remove('active'));
+            channel.classList.add('active');
+            
+            // Update channel name display
+            document.getElementById('currentChannel').textContent = channelName;
+            
+            // Clear and load messages for new channel
+            chatMessages.innerHTML = '';
+            const channelMessages = loadMessages(channelName);
+            channelMessages.forEach(message => {
+                addMessage(message, message.isCurrentUser);
+            });
+
+            // Mark messages as read
+            markMessagesAsRead(channelName);
+        });
+    });
+
+    // Handle emoji buttons
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!chatInput.disabled) {
+                chatInput.value += btn.textContent;
+                chatInput.focus();
+            }
+        });
+    });
+
+    // Handle file upload
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                addMessage({ text: `📎 File: ${file.name}` }, true);
+                fileInput.value = '';
+            }
+        });
     }
-    
-    // Check for search query in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchQuery = urlParams.get('search');
-    if (searchQuery && document.getElementById('searchInput')) {
-        document.getElementById('searchInput').value = searchQuery;
-        // Trigger search after a short delay to allow page to load
-        setTimeout(() => handleSearch(new Event('submit')), 500);
-    }
 
-    if (isLoggedIn) {
-        // Set current username in the UI
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        const currentUsername = document.getElementById('currentUsername');
-        if (currentUser && currentUsername) {
-            currentUsername.textContent = currentUser.username;
-        }
-
-        // Display posts
-        displayPosts();
-
-        // New post button functionality
-        if (newPostBtn) {
-            newPostBtn.addEventListener('click', createNewPost);
-        }
-
-        // Chat send message button
-        const sendMessageBtn = document.getElementById('sendMessageBtn');
-        if (sendMessageBtn) {
-            sendMessageBtn.addEventListener('click', handleSendMessage);
-        }
-
-        // Chat input enter key
-        const chatInput = document.getElementById('chatInput');
-        if (chatInput) {
-            chatInput.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    handleSendMessage();
-                }
-            });
-
-            // Focus on chat input when page loads
-            chatInput.focus();
-        }
-
-        // Channel selection
-        const channelItems = document.querySelectorAll('#channelList .list-group-item');
-        channelItems.forEach(item => {
-            item.addEventListener('click', function() {
-                const channel = this.getAttribute('data-channel');
-                if (channel) {
-                    changeChannel(channel);
-                }
-            });
-        });
-
-        // Emoji buttons
-        const emojiButtons = document.querySelectorAll('.emoji-btn');
-        emojiButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                addEmojiToInput(this.textContent);
-            });
-        });
-
-        // Add event listeners to all comment buttons
-        document.querySelectorAll('.comment-btn').forEach(button => {
-            button.addEventListener('click', handleCommentClick);
-        });
-
-        // Add event listeners to all like buttons
-        document.querySelectorAll('.like-btn').forEach(button => {
-            button.addEventListener('click', handleLikeClick);
-        });
-
-        // Initialize with default channel
-        if (document.getElementById('chatMessages')) {
-            changeChannel('emel');
-        }
-
-        // Toggle user status
-        const userStatus = document.getElementById('userStatus');
-        if (userStatus) {
-            userStatus.addEventListener('click', function() {
-                if (this.textContent === 'Online') {
-                    this.textContent = 'Away';
-                    this.className = 'badge bg-warning';
-                } else if (this.textContent === 'Away') {
-                    this.textContent = 'Offline';
-                    this.className = 'badge bg-secondary';
-                } else {
-                    this.textContent = 'Online';
-                    this.className = 'badge bg-success';
-                }
-            });
-        }
-
-        // Refresh users list
-        const refreshUsersBtn = document.getElementById('refreshUsers');
-        if (refreshUsersBtn) {
-            refreshUsersBtn.addEventListener('click', function() {
-                // Simulate refreshing user list
-                const usersList = document.getElementById('onlineUsers');
-                if (usersList) {
-                    // Show loading state
-                    this.textContent = 'Menyegarkan...';
-                    this.disabled = true;
-
-                    setTimeout(() => {
-                        // Add a random user
-                        const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-
-                        const newUserItem = document.createElement('li');
-                        newUserItem.className = 'list-group-item d-flex align-items-center';
-                        newUserItem.innerHTML = `
-                            <span class="online-indicator"></span>
-                            ${randomUser}
-                        `;
-
-                        usersList.appendChild(newUserItem);
-
-                        // Reset button
-                        this.textContent = 'Refresh Pengguna';
-                        this.disabled = false;
-
-                        // Show success message in chat
-                        addChatMessage('Daftar pengguna berhasil diperbarui!', false, 'Admin', true);
-                    }, 1000);
-                }
-            });
-        }
-    }
+    // Update badges initially
+    updateChannelBadges();
 });
+
+// Helper functions
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger mt-3';
+    errorDiv.textContent = message;
+    
+    const form = document.querySelector('form');
+    form.insertBefore(errorDiv, form.firstChild);
+    
+    setTimeout(() => errorDiv.remove(), 3000);
+}
+
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success mt-3';
+    successDiv.textContent = message;
+    
+    const form = document.querySelector('form');
+    form.insertBefore(successDiv, form.firstChild);
+}
+
+function showLoginError(message) {
+    showError(message);
+}
+
+function showLoginSuccess(message) {
+    showSuccess(message);
+}
