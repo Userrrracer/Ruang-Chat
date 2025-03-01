@@ -103,6 +103,8 @@ function checkAuth() {
 
                 // Add event listener to logout button
                 document.getElementById('logoutBtn').addEventListener('click', function() {
+                    // Mark user as offline before logging out
+                    setUserOffline(currentUser.username);
                     localStorage.removeItem('currentUser');
                     window.location.href = 'index.html';
                 });
@@ -111,9 +113,71 @@ function checkAuth() {
 
         // Update user profile section
         updateUserProfile(currentUser);
+        
+        // Mark user as online
+        setUserOnline(currentUser.username);
+        
+        // Set up periodic refresh of messages (to simulate real-time)
+        setupChatRefresh();
     }
 
     return true;
+}
+
+// Function to mark user as online
+function setUserOnline(username) {
+    const onlineUsers = JSON.parse(localStorage.getItem('onlineUsers')) || [];
+    if (!onlineUsers.includes(username)) {
+        onlineUsers.push(username);
+        localStorage.setItem('onlineUsers', JSON.stringify(onlineUsers));
+    }
+}
+
+// Function to mark user as offline
+function setUserOffline(username) {
+    const onlineUsers = JSON.parse(localStorage.getItem('onlineUsers')) || [];
+    const index = onlineUsers.indexOf(username);
+    if (index !== -1) {
+        onlineUsers.splice(index, 1);
+        localStorage.setItem('onlineUsers', JSON.stringify(onlineUsers));
+    }
+}
+
+// Set up periodic refresh of chat messages
+function setupChatRefresh() {
+    // Check for new messages every 3 seconds
+    const chatRefreshInterval = setInterval(() => {
+        if (document.getElementById('chatMessages')) {
+            refreshChatMessages();
+        } else {
+            // Clear interval if chat element is not found (user navigated away)
+            clearInterval(chatRefreshInterval);
+        }
+    }, 3000);
+}
+
+// Refresh chat messages
+function refreshChatMessages() {
+    const latestMessages = loadMessages(currentChannel);
+    const currentMessages = document.querySelectorAll('#chatMessages .message:not(.system-message)');
+    
+    // If we have more messages in storage than in UI, refresh the chat
+    if (latestMessages.length > currentMessages.length) {
+        // Save scroll position
+        const chatMessages = document.getElementById('chatMessages');
+        const scrollPos = chatMessages.scrollTop;
+        const wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
+        
+        // Reload current channel
+        changeChannel(currentChannel);
+        
+        // Restore scroll position or scroll to bottom if user was at bottom
+        if (wasAtBottom) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+            chatMessages.scrollTop = scrollPos;
+        }
+    }
 }
 
 // Update user profile information
@@ -604,10 +668,16 @@ function saveMessages(channel, messages) {
     localStorage.setItem('chatMessages', JSON.stringify(allMessages));
 }
 
-// Function to format time
+// Function to format time with date
 function formatTime() {
     const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const date = now.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return `${date} ${time}`;
 }
 
 // Function to add chat message
@@ -617,7 +687,7 @@ function addChatMessage(message, isCurrentUser = true, username = null, isSystem
 
     const messageElement = document.createElement('div');
     const time = formatTime();
-    const messageId = Date.now().toString(); // Unique ID for the message
+    const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5); // More unique ID
     messageElement.dataset.messageId = messageId;
 
     if (isSystem) {
@@ -626,13 +696,19 @@ function addChatMessage(message, isCurrentUser = true, username = null, isSystem
             <div class="message-content">${message}</div>
         `;
     } else {
-        messageElement.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
-
+        // Determine if message is from current user
         const currentUser = JSON.parse(localStorage.getItem('currentUser')) || { username: 'Guest' };
         const displayName = username || (isCurrentUser ? currentUser.username : 'Lain');
+        
+        // If username is explicitly provided, check if it's current user
+        const isActuallyCurrentUser = username ? 
+            (username === currentUser.username) : 
+            isCurrentUser;
+            
+        messageElement.className = `message ${isActuallyCurrentUser ? 'user-message' : 'other-message'}`;
 
         // Only show delete button for user's own messages
-        const deleteButton = isCurrentUser ? 
+        const deleteButton = isActuallyCurrentUser ? 
             `<button class="btn-delete-message" data-message-id="${messageId}">
                 <i class="bi bi-trash"></i>
              </button>` : '';
@@ -654,7 +730,7 @@ function addChatMessage(message, isCurrentUser = true, username = null, isSystem
             messages.push({
                 id: messageId,
                 message,
-                isCurrentUser,
+                isCurrentUser: isActuallyCurrentUser,
                 username: displayName,
                 timestamp: new Date().toISOString(),
                 time
@@ -745,6 +821,7 @@ function changeChannel(channel) {
 
     // Load messages from localStorage
     const messages = loadMessages(channel);
+    const currentUser = JSON.parse(localStorage.getItem('currentUser')) || { username: 'Guest' };
 
     if (messages.length === 0) {
         // Add welcome message if no messages
@@ -768,26 +845,86 @@ function changeChannel(channel) {
 
         // Add sample messages and save them
         if (channelMessages[channel]) {
+            const initialMessages = [];
+            
             channelMessages[channel].forEach(msg => {
-                addChatMessage(msg.message, false, msg.user, false, true);
+                const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                initialMessages.push({
+                    id: messageId,
+                    message: msg.message,
+                    isCurrentUser: false,
+                    username: msg.user,
+                    timestamp: new Date().toISOString(),
+                    time: formatTime()
+                });
+                
+                addChatMessage(msg.message, false, msg.user, false, false);
             });
+            
+            // Save initial messages
+            saveMessages(channel, initialMessages);
         }
     } else {
         // Display saved messages
         messages.forEach(msg => {
-            // Make sure we use the message ID if it exists
-            const messageElement = document.createElement('div');
-            const messageId = msg.id || Date.now().toString();
-            messageElement.dataset.messageId = messageId;
+            // Check if this message belongs to current user
+            const isFromCurrentUser = msg.username === currentUser.username;
             
-            addChatMessage(
-                msg.message,
-                msg.isCurrentUser,
-                msg.username,
-                false,
-                false // Don't save again
-            );
+            // Create message element manually to ensure we show the stored timestamp
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                const messageElement = document.createElement('div');
+                const messageId = msg.id || Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                messageElement.dataset.messageId = messageId;
+                
+                // Format timestamp if it exists, otherwise use the time field
+                let displayTime = msg.time;
+                if (msg.timestamp) {
+                    const msgDate = new Date(msg.timestamp);
+                    displayTime = `${msgDate.toLocaleDateString('id-ID', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    })} ${String(msgDate.getHours()).padStart(2, '0')}:${String(msgDate.getMinutes()).padStart(2, '0')}`;
+                }
+                
+                messageElement.className = `message ${isFromCurrentUser ? 'user-message' : 'other-message'}`;
+                
+                // Only show delete button for user's own messages
+                const deleteButton = isFromCurrentUser ? 
+                    `<button class="btn-delete-message" data-message-id="${messageId}">
+                        <i class="bi bi-trash"></i>
+                     </button>` : '';
+                
+                messageElement.innerHTML = `
+                    <div class="message-header">
+                        <strong>${msg.username}</strong>
+                        <div class="message-actions">
+                            <small>${displayTime}</small>
+                            ${deleteButton}
+                        </div>
+                    </div>
+                    <div class="message-content">${msg.message}</div>
+                `;
+                
+                chatMessages.appendChild(messageElement);
+                
+                // Add event listener for delete button
+                setTimeout(() => {
+                    const deleteBtn = messageElement.querySelector('.btn-delete-message');
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('click', function() {
+                            deleteMessage(messageId);
+                        });
+                    }
+                }, 0);
+            }
         });
+        
+        // Scroll to the bottom
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
     }
 
     // Update active channel in UI
@@ -825,16 +962,35 @@ function handleSendMessage() {
 
     const message = chatInput.value.trim();
     if (message) {
-        // Add user message
-        addChatMessage(message, true);
-
+        const currentUser = JSON.parse(localStorage.getItem('currentUser')) || { username: 'Guest' };
+        
+        // Add user message with metadata
+        const messageId = Date.now().toString();
+        const messageData = {
+            id: messageId,
+            message: message,
+            isCurrentUser: true,
+            username: currentUser.username,
+            timestamp: new Date().toISOString(),
+            time: formatTime()
+        };
+        
+        // Save to localStorage first to ensure persistence
+        const messages = loadMessages(currentChannel);
+        messages.push(messageData);
+        saveMessages(currentChannel, messages);
+        
+        // Then add to UI
+        addChatMessage(message, true, currentUser.username, false, false);
+        
         // Clear input
         chatInput.value = '';
-
+        
         // Update category post counts
         updateCategoryPostCounts();
-
-        // Simulate response in certain channels
+        
+        // Simulate response from other users (for demo purposes only)
+        // In a real app, you would use a real-time database or WebSockets
         if (Math.random() > 0.6) {
             setTimeout(() => {
                 const channelResponses = {
@@ -868,8 +1024,24 @@ function handleSendMessage() {
                 const responses = channelResponses[currentChannel] || channelResponses.emel;
                 const randomResponse = responses[Math.floor(Math.random() * responses.length)];
                 const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-
-                addChatMessage(randomResponse, false, randomUser);
+                
+                // Save bot response to localStorage
+                const botMessageId = (Date.now() + 1).toString();
+                const botMessageData = {
+                    id: botMessageId,
+                    message: randomResponse,
+                    isCurrentUser: false,
+                    username: randomUser,
+                    timestamp: new Date().toISOString(),
+                    time: formatTime()
+                };
+                
+                const updatedMessages = loadMessages(currentChannel);
+                updatedMessages.push(botMessageData);
+                saveMessages(currentChannel, updatedMessages);
+                
+                // Then add to UI
+                addChatMessage(randomResponse, false, randomUser, false, false);
 
                 // Update category post counts after response
                 updateCategoryPostCounts();
@@ -1067,6 +1239,96 @@ function handleFileUpload() {
     }
 }
 
+// Mobile tab navigation
+function setupMobileTabs() {
+    const mobileTabs = document.querySelectorAll('.mobile-tab');
+    if (mobileTabs.length > 0) {
+        mobileTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active tab
+                document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show selected panel
+                const targetPanel = this.getAttribute('data-target');
+                document.querySelectorAll('.mobile-panel').forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                document.getElementById(targetPanel).classList.add('active');
+            });
+        });
+    }
+}
+
+// Function to sync desktop and mobile components
+function syncDesktopMobileElements() {
+    // Sync profile sections
+    const profileDesktop = document.getElementById('userProfileSectionDesktop');
+    const profileMobile = document.getElementById('userProfileSection');
+    if (profileDesktop && profileMobile) {
+        // When desktop is updated, update mobile too
+        const observer = new MutationObserver(function() {
+            profileMobile.innerHTML = profileDesktop.innerHTML;
+        });
+        observer.observe(profileDesktop, { childList: true, subtree: true });
+    }
+    
+    // Sync channel lists
+    const channelListDesktop = document.getElementById('channelListDesktop');
+    const channelList = document.getElementById('channelList');
+    if (channelListDesktop && channelList) {
+        // Make sure both lists respond to channel changes
+        channelListDesktop.querySelectorAll('.list-group-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const channel = this.getAttribute('data-channel');
+                if (channel) {
+                    changeChannel(channel);
+                }
+            });
+        });
+        
+        // Update both lists when channels change
+        const updateChannelLists = () => {
+            const badges = document.querySelectorAll('#channelList .badge');
+            const badgesDesktop = document.querySelectorAll('#channelListDesktop .badge');
+            
+            for (let i = 0; i < badges.length && i < badgesDesktop.length; i++) {
+                const channel = badges[i].closest('.list-group-item').getAttribute('data-channel');
+                const messages = loadMessages(channel);
+                badges[i].textContent = messages.length;
+                badgesDesktop[i].textContent = messages.length;
+            }
+        };
+        
+        // Override updateCategoryPostCounts to update both lists
+        const originalUpdateCounts = updateCategoryPostCounts;
+        updateCategoryPostCounts = function() {
+            originalUpdateCounts();
+            updateChannelLists();
+        };
+    }
+    
+    // Sync online users lists
+    const onlineUsersDesktop = document.getElementById('onlineUsersDesktop');
+    const onlineUsers = document.getElementById('onlineUsers');
+    if (onlineUsersDesktop && onlineUsers) {
+        // When desktop is updated, update mobile too
+        const observer = new MutationObserver(function() {
+            onlineUsers.innerHTML = onlineUsersDesktop.innerHTML;
+        });
+        observer.observe(onlineUsersDesktop, { childList: true, subtree: true });
+    }
+    
+    // Sync refresh buttons
+    const refreshUsersDesktop = document.getElementById('refreshUsersDesktop');
+    const refreshUsers = document.getElementById('refreshUsers');
+    if (refreshUsersDesktop && refreshUsers) {
+        refreshUsersDesktop.addEventListener('click', function() {
+            refreshUsers.click();
+        });
+    }
+}
+
 // Event listeners
 // Function to handle search
 function handleSearch(event) {
@@ -1116,6 +1378,9 @@ function handleSearch(event) {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize posts
     initializePosts();
+    
+    // Setup mobile tabs
+    setupMobileTabs();
 
     // Check auth status
     const isLoggedIn = checkAuth();
@@ -1206,6 +1471,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update online users list on page load
         updateOnlineUsersList();
+        
+        // Sync desktop and mobile elements
+        syncDesktopMobileElements();
 
         // Toggle user status
         const userStatus = document.getElementById('userStatus');
