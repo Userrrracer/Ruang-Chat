@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Pendaftaran - Forum Chat Toress</title>
+</head>
+<body class="register-body">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card register-card">
+                    <div class="card-header register-header">
+                        <h1 class="text-center">Pendaftaran Pengguna</h1>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="register-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                        </div>
+                        <form id="registerForm">
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" id="username" placeholder="Username" required>
+                            </div>
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" placeholder="Email" required>
+                            </div>
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-register btn-lg w-100">Daftar</button>
+                            </div>
+                        </form>
+                        <div class="mt-4 text-center">
+                            <p>Sudah punya akun? <a href="login.html" class="login-link">Login disini</a></p>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="index.html" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-home"></i> Kembali ke Beranda
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Toggle password visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    </script>
+</body>
+</html>
