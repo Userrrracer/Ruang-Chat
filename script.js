@@ -92,9 +92,6 @@ if (loginForm) {
                 lastSeen: new Date().toISOString()
             }));
 
-            // Add user to online users list
-            addOnlineUser(user);
-
             showLoginSuccess('Login berhasil! Mengarahkan ke forum...');
             setTimeout(() => {
                 window.location.href = 'forum.html';
@@ -108,33 +105,109 @@ if (loginForm) {
 // Check auth status and enable/disable chat
 function checkAuth() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    console.log('Checking auth status:', currentUser);
 
     if (currentUser) {
+        console.log('User is logged in:', currentUser);
+        
         // Enable chat input and buttons
-        if (chatInput) chatInput.disabled = false;
-        if (sendMessageBtn) sendMessageBtn.disabled = false;
-        document.querySelectorAll('.emoji-btn').forEach(btn => btn.disabled = false);
-        document.querySelector('#fileInput').disabled = false;
+        if (chatInput) {
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Ketik pesan...';
+        }
+        
+        if (sendMessageBtn) {
+            sendMessageBtn.disabled = false;
+            sendMessageBtn.classList.remove('disabled');
+        }
+        
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('disabled');
+        });
+        
+        const fileInput = document.querySelector('#fileInput');
+        if (fileInput) {
+            fileInput.disabled = false;
+            const label = fileInput.closest('label');
+            if (label) label.classList.remove('disabled');
+        }
 
         // Hide login prompt
-        if (loginPrompt) loginPrompt.style.display = 'none';
+        if (loginPrompt) {
+            loginPrompt.style.display = 'none';
+        }
 
         // Add user to online users
         addOnlineUser(currentUser);
 
+        // Initialize chat interface
+        initializeChat();
+
         return true;
     } else {
+        console.log('No user logged in');
+        
         // Disable chat input and buttons
-        if (chatInput) chatInput.disabled = true;
-        if (sendMessageBtn) sendMessageBtn.disabled = true;
-        document.querySelectorAll('.emoji-btn').forEach(btn => btn.disabled = true);
-        document.querySelector('#fileInput').disabled = true;
+        if (chatInput) {
+            chatInput.disabled = true;
+            chatInput.placeholder = 'Silakan login untuk mengirim pesan';
+        }
+        
+        if (sendMessageBtn) {
+            sendMessageBtn.disabled = true;
+            sendMessageBtn.classList.add('disabled');
+        }
+        
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add('disabled');
+        });
+        
+        const fileInput = document.querySelector('#fileInput');
+        if (fileInput) {
+            fileInput.disabled = true;
+            const label = fileInput.closest('label');
+            if (label) label.classList.add('disabled');
+        }
 
         // Show login prompt
-        if (loginPrompt) loginPrompt.style.display = 'block';
+        if (loginPrompt) {
+            loginPrompt.style.display = 'block';
+        }
+
+        // Redirect to login if on forum page
+        if (window.location.pathname.includes('forum.html')) {
+            window.location.href = 'login.html';
+        }
 
         return false;
     }
+}
+
+// Initialize chat interface
+function initializeChat() {
+    console.log('Initializing chat interface');
+    
+    // Load existing messages for current channel
+    const messages = loadMessages(currentChannel);
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+        messages.forEach(message => {
+            addMessage(message, message.isCurrentUser);
+        });
+    }
+
+    // Set initial active channel
+    const channels = document.querySelectorAll('#channelList .list-group-item');
+    channels.forEach(channel => {
+        if (channel.getAttribute('data-channel') === currentChannel) {
+            channel.classList.add('active');
+        }
+    });
+
+    // Update badges
+    updateChannelBadges();
 }
 
 // Update online users list
@@ -366,14 +439,9 @@ if (chatInput) {
 
 // Initialize chat
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Document loaded, checking auth...');
     checkAuth();
     
-    // Load existing messages
-    const messages = loadMessages(currentChannel);
-    messages.forEach(message => {
-        addMessage(message, message.isCurrentUser);
-    });
-
     // Handle channel switching
     const channels = document.querySelectorAll('#channelList .list-group-item');
     channels.forEach(channel => {
