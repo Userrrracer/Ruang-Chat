@@ -28,7 +28,7 @@
     <!-- HEADER END -->
 
     <!-- NAVIGATION BAR -->
-    <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
+    <div class="shadow p-1 mb-2 bg-body-tertiary rounded">
         <div class="card text-center">
             <div class="card-header">
                 <ul class="nav nav-pills card-header-pills">
@@ -43,7 +43,7 @@
                     </li>
                 </ul>
                 <form class="d-flex" role="search">
-                    <input class="form-control me-2" type="search" placeholder="Cari..." aria-label="Search" id="searchInput">
+                    <input class="form-control me-1" type="search" placeholder="Cari..." aria-label="Search" id="searchInput">
                     <button class="btn btn-outline-success" type="submit" id="searchButton">Cari</button>
                 </form>
             </div>
@@ -51,13 +51,22 @@
     </div>
     <!-- NAVIGATION BAR END -->
 
-    <div class="container mt-4">
+    <!-- Mobile Tabs Navigation -->
+    <div class="d-md-none mobile-tabs">
+        <div class="mobile-tab active" data-target="chatPanel">Chat</div>
+        <div class="mobile-tab" data-target="discussionPanel">Diskusi</div>
+        <div class="mobile-tab" data-target="categoryPanel">Kategori</div>
+        <div class="mobile-tab" data-target="profilePanel">Profil</div>
+        <div class="mobile-tab" data-target="usersPanel">Online</div>
+    </div>
+
+    <div class="container mt-2">
         <div class="row">
-            <!-- Categories Section -->
-            <div class="col-md-4">
-                <div class="card mb-4">
+            <!-- Categories Section - Hidden on mobile by default -->
+            <div class="col-md-4 mobile-panel" id="categoryPanel">
+                <div class="card mb-3">
                     <div class="card-header">
-                        <h2 class="text-dark">Kategori Chat</h2>
+                        <h5 class="text-dark mb-0">Kategori Chat</h5>
                     </div>
                     <div class="card-body">
                         <ul class="list-group" id="channelList">
@@ -84,21 +93,25 @@
                         </ul>
                     </div>
                 </div>
+            </div>
 
-                <!-- User Profile Section -->
-                <div class="card mb-4">
+            <!-- User Profile Section - Hidden on mobile by default -->
+            <div class="col-md-4 mobile-panel" id="profilePanel">
+                <div class="card mb-3">
                     <div class="card-header">
-                        <h2 class="text-dark">Profil Saya</h2>
+                        <h5 class="text-dark mb-0">Profil Saya</h5>
                     </div>
                     <div class="card-body" id="userProfileSection">
                         <!-- Will be populated by JavaScript -->
                     </div>
                 </div>
+            </div>
 
-                <!-- Online Users Section -->
-                <div class="card">
+            <!-- Online Users Section - Hidden on mobile by default -->
+            <div class="col-md-4 mobile-panel" id="usersPanel">
+                <div class="card mb-3">
                     <div class="card-header">
-                        <h2 class="text-dark">Pengguna Online</h2>
+                        <h5 class="text-dark mb-0">Pengguna Online</h5>
                     </div>
                     <div class="card-body">
                         <ul class="list-group" id="onlineUsers">
@@ -110,18 +123,76 @@
                                 <span class="ms-2">Memuat pengguna...</span>
                             </li>
                         </ul>
-                        <div class="mt-3">
+                        <div class="mt-2">
                             <button class="btn btn-sm btn-success w-100" id="refreshUsers">Refresh Pengguna</button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Desktop sidebar column -->
+            <div class="col-md-4 d-none d-md-block">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="text-dark mb-0">Kategori Chat</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group" id="channelListDesktop">
+                            <li class="list-group-item d-flex justify-content-between align-items-center active" data-channel="emel">
+                                emel
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-channel="sekolah">
+                                sekolah
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-channel="running">
+                                running
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-channel="musik">
+                                Musik
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-channel="all">
+                                all
+                                <span class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- User Profile Section -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="text-dark mb-0">Profil Saya</h5>
+                    </div>
+                    <div class="card-body" id="userProfileSectionDesktop">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Online Users Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-dark mb-0">Pengguna Online</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group" id="onlineUsersDesktop">
+                            <!-- Will be populated by JavaScript -->
+                        </ul>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-success w-100" id="refreshUsersDesktop">Refresh Pengguna</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Chat Section -->
-            <div class="col-md-8">
-                <div class="card mb-4">
+            <div class="col-md-8 mobile-panel active" id="chatPanel">
+                <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h2 class="text-dark mb-0">Chat Room: <span id="currentChannel">emel</span></h2>
+                        <h5 class="text-dark mb-0">Chat: <span id="currentChannel">emel</span></h5>
                         <span id="userStatus" class="badge bg-success">Online</span>
                     </div>
                     <div class="card-body">
@@ -129,12 +200,12 @@
                             <div class="chat-messages" id="chatMessages">
                                 <!-- Messages will be added dynamically -->
                             </div>
-                            <div class="chat-input-container mt-3">
+                            <div class="chat-input-container mt-2">
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="chatInput" placeholder="Ketik pesan...">
                                     <button class="btn btn-primary" id="sendMessageBtn">Kirim</button>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="d-flex justify-content-between align-items-center mt-1">
                                     <div>
                                         <button class="btn btn-sm btn-outline-secondary emoji-btn">😊</button>
                                         <button class="btn btn-sm btn-outline-secondary emoji-btn">👍</button>
@@ -145,7 +216,7 @@
                                     <div>
                                         <label class="btn btn-sm btn-outline-info">
                                             <input type="file" id="fileInput" style="display:none" onchange="handleFileUpload()">
-                                            <i class="bi bi-paperclip"></i> Lampirkan File
+                                            <i class="bi bi-paperclip"></i> File
                                         </label>
                                     </div>
                                 </div>
@@ -153,12 +224,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Recent Posts -->
-                <div class="card">
+            <!-- Recent Posts - Hidden on mobile by default -->
+            <div class="col-md-8 mobile-panel" id="discussionPanel">
+                <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between">
-                        <h2 class="text-dark">Diskusi Terbaru</h2>
-                        <button class="btn btn-primary" id="newPostBtn">Buat Diskusi Baru</button>
+                        <h5 class="text-dark mb-0">Diskusi Terbaru</h5>
+                        <button class="btn btn-primary btn-sm" id="newPostBtn">Buat Diskusi</button>
                     </div>
                     <div class="card-body">
                         <div class="post-container" id="postList">
