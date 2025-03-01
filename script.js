@@ -334,6 +334,26 @@ function createPostElement(post) {
     const postDate = new Date(post.timestamp);
     const timeAgo = getTimeAgo(postDate);
 
+    // Generate file HTML if post has file
+    let fileHtml = '';
+    if (post.file && post.file.data) {
+        if (post.file.type.startsWith('image/')) {
+            fileHtml = `
+                <div class="mt-3 mb-3">
+                    <img src="${post.file.data}" alt="Gambar yang diunggah" class="img-fluid rounded" style="max-height: 300px;">
+                </div>
+            `;
+        } else {
+            fileHtml = `
+                <div class="mt-3 mb-3">
+                    <div class="alert alert-info">
+                        <i class="bi bi-file-earmark"></i> File terlampir: ${post.file.name}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
     // Generate comments HTML
     let commentsHtml = '';
     if (post.comments && post.comments.length > 0) {
@@ -348,6 +368,11 @@ function createPostElement(post) {
                                 <small>${getTimeAgo(new Date(comment.timestamp))}</small>
                             </div>
                             <p class="mb-1">${comment.text}</p>
+                            ${comment.file ? `
+                                <div class="mt-2">
+                                    <img src="${comment.file.data}" alt="Komentar gambar" class="img-fluid rounded" style="max-height: 150px;">
+                                </div>
+                            ` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -363,6 +388,7 @@ function createPostElement(post) {
         <div class="card-body">
             <h5 class="card-title text-dark">${post.title}</h5>
             <p class="card-text text-dark">${post.content}</p>
+            ${fileHtml}
             <div class="d-flex justify-content-between">
                 <span class="badge bg-secondary">${post.category}</span>
                 <div>
@@ -391,7 +417,7 @@ function createPostElement(post) {
     return postElement;
 }
 
-// Create new post
+// Create new post with modal
 function createNewPost() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!currentUser) {
@@ -399,33 +425,135 @@ function createNewPost() {
         return;
     }
 
-    // In a real app, this would be a modal or new page
-    const title = prompt('Judul diskusi:');
-    const content = prompt('Isi diskusi:');
-    const category = prompt('Kategori (emel, sekolah, running, musik, all):');
+    // Create modal for new post
+    const modalHTML = `
+    <div class="modal fade" id="newPostModal" tabindex="-1" aria-labelledby="newPostModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-dark" id="newPostModalLabel">Buat Diskusi Baru</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="newPostForm">
+              <div class="mb-3">
+                <label for="postTitle" class="form-label text-dark">Judul</label>
+                <input type="text" class="form-control" id="postTitle" required>
+              </div>
+              <div class="mb-3">
+                <label for="postContent" class="form-label text-dark">Isi Diskusi</label>
+                <textarea class="form-control" id="postContent" rows="4" required></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="postCategory" class="form-label text-dark">Kategori</label>
+                <select class="form-select" id="postCategory" required>
+                  <option value="emel">emel</option>
+                  <option value="sekolah">sekolah</option>
+                  <option value="running">running</option>
+                  <option value="musik">Musik</option>
+                  <option value="all">all</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="postFile" class="form-label text-dark">Lampirkan File (opsional)</label>
+                <input class="form-control" type="file" id="postFile" accept="image/*">
+                <div class="form-text">Mendukung format gambar (JPG, PNG, GIF)</div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-primary" id="submitNewPost">Posting</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
 
-    if (title && content && category) {
-        const posts = loadPosts();
-
-        // Create new post
-        const newPost = {
-            id: Date.now(), // Use timestamp as ID
-            title,
-            content,
-            author: currentUser.username,
-            category,
-            timestamp: new Date().toISOString(),
-            comments: [],
-            likes: []
-        };
-
-        // Add to posts list
-        posts.unshift(newPost); // Add to beginning
-        savePosts(posts);
-
-        // Update UI
-        displayPosts();
+    // Add modal to body if it doesn't exist
+    if (!document.getElementById('newPostModal')) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer);
     }
+
+    // Initialize modal
+    const newPostModal = new bootstrap.Modal(document.getElementById('newPostModal'));
+    newPostModal.show();
+
+    // Handle form submission
+    document.getElementById('submitNewPost').addEventListener('click', function() {
+        const title = document.getElementById('postTitle').value.trim();
+        const content = document.getElementById('postContent').value.trim();
+        const category = document.getElementById('postCategory').value;
+        const fileInput = document.getElementById('postFile');
+        
+        if (title && content && category) {
+            const posts = loadPosts();
+            
+            // Handle file upload
+            let fileData = null;
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    // Create new post with file data
+                    const newPost = {
+                        id: Date.now(),
+                        title,
+                        content,
+                        author: currentUser.username,
+                        category,
+                        timestamp: new Date().toISOString(),
+                        comments: [],
+                        likes: [],
+                        file: {
+                            name: file.name,
+                            type: file.type,
+                            data: e.target.result
+                        }
+                    };
+                    
+                    // Add to posts list
+                    posts.unshift(newPost);
+                    savePosts(posts);
+                    
+                    // Update UI
+                    displayPosts();
+                    
+                    // Close modal
+                    newPostModal.hide();
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                // Create new post without file
+                const newPost = {
+                    id: Date.now(),
+                    title,
+                    content,
+                    author: currentUser.username,
+                    category,
+                    timestamp: new Date().toISOString(),
+                    comments: [],
+                    likes: []
+                };
+                
+                // Add to posts list
+                posts.unshift(newPost);
+                savePosts(posts);
+                
+                // Update UI
+                displayPosts();
+                
+                // Close modal
+                newPostModal.hide();
+            }
+        } else {
+            alert('Semua kolom wajib diisi!');
+        }
+    });
 }
 
 // Utility function to get time ago
@@ -768,32 +896,116 @@ function handleCommentClick(event) {
     }
 
     const postId = parseInt(event.target.getAttribute('data-post-id'));
-    const commentText = prompt('Tambahkan komentar Anda:');
+    
+    // Create modal for comment
+    const modalHTML = `
+    <div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-dark" id="commentModalLabel">Tambahkan Komentar</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="commentForm">
+              <div class="mb-3">
+                <label for="commentText" class="form-label text-dark">Komentar</label>
+                <textarea class="form-control" id="commentText" rows="3" required></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="commentFile" class="form-label text-dark">Lampirkan Gambar (opsional)</label>
+                <input class="form-control" type="file" id="commentFile" accept="image/*">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-primary" id="submitComment">Posting</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
 
-    if (commentText && commentText.trim()) {
-        const posts = loadPosts();
-        const postIndex = posts.findIndex(post => post.id === postId);
-
-        if (postIndex !== -1) {
-            // Add comment to post
-            if (!posts[postIndex].comments) {
-                posts[postIndex].comments = [];
-            }
-
-            posts[postIndex].comments.push({
-                id: Date.now(),
-                author: currentUser.username,
-                text: commentText,
-                timestamp: new Date().toISOString()
-            });
-
-            // Save posts
-            savePosts(posts);
-
-            // Update UI
-            displayPosts();
-        }
+    // Add modal to body if it doesn't exist
+    if (!document.getElementById('commentModal')) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer);
     }
+
+    // Initialize and show modal
+    const commentModal = new bootstrap.Modal(document.getElementById('commentModal'));
+    commentModal.show();
+
+    // Handle form submission
+    document.getElementById('submitComment').addEventListener('click', function() {
+        const commentText = document.getElementById('commentText').value.trim();
+        const fileInput = document.getElementById('commentFile');
+        
+        if (commentText) {
+            const posts = loadPosts();
+            const postIndex = posts.findIndex(post => post.id === postId);
+
+            if (postIndex !== -1) {
+                // Initialize comments array if needed
+                if (!posts[postIndex].comments) {
+                    posts[postIndex].comments = [];
+                }
+
+                // Handle file upload
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        // Add comment with file
+                        posts[postIndex].comments.push({
+                            id: Date.now(),
+                            author: currentUser.username,
+                            text: commentText,
+                            timestamp: new Date().toISOString(),
+                            file: {
+                                name: file.name,
+                                type: file.type,
+                                data: e.target.result
+                            }
+                        });
+                        
+                        // Save posts
+                        savePosts(posts);
+                        
+                        // Update UI
+                        displayPosts();
+                        
+                        // Close modal
+                        commentModal.hide();
+                    };
+                    
+                    reader.readAsDataURL(file);
+                } else {
+                    // Add comment without file
+                    posts[postIndex].comments.push({
+                        id: Date.now(),
+                        author: currentUser.username,
+                        text: commentText,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Save posts
+                    savePosts(posts);
+                    
+                    // Update UI
+                    displayPosts();
+                    
+                    // Close modal
+                    commentModal.hide();
+                }
+            }
+        } else {
+            alert('Komentar tidak boleh kosong!');
+        }
+    });
 }
 
 // Handle like button clicks
