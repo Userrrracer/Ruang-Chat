@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>Informasi Akun</title>
+</head>
+<body class="p-3 mb-2 bg-secondary text-white">
+    <div class="container mt-4">
+        <h1 class="text-center">Informasi Akun</h1>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h2 class="text-dark">Detail Pengguna</h2>
+            </div>
+            <div class="card-body" id="userInfo">
+                <!-- User information will be populated here -->
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="forum.html" class="btn btn-primary">Kembali ke Forum</a>
+        </div>
+    </div>
+    <script>
+        // Function to display user information
+        function displayUserInfo() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const userInfoDiv = document.getElementById('userInfo');
+
+            if (currentUser) {
+                userInfoDiv.innerHTML = `
+                    <p><strong>Nama Pengguna:</strong> ${currentUser.username}</p>
+                    <p><strong>Email:</strong> ${currentUser.email}</p>
+                    <p><strong>Aktivitas:</strong> <span id="userActivity">Belum ada aktivitas</span></p>
+                `;
+            } else {
+                userInfoDiv.innerHTML = '<p>Silakan login untuk melihat informasi akun Anda.</p>';
+            }
+        }
+
+        // Call the function to display user info on page load
+        document.addEventListener('DOMContentLoaded', displayUserInfo);
+    </script>
+</body>
+</html>
