@@ -90,7 +90,17 @@ function updateOnlineUsers() {
 
 
 function checkAuth() {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+    // If user is not logged in, check if there's a session
+    if (!currentUser) {
+        const sessionUser = localStorage.getItem('sessionUser');
+        if (sessionUser) {
+            currentUser = JSON.parse(sessionUser);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+    }
+
 
     // If on forum page and not logged in, redirect to login
     if (window.location.pathname.includes('forum.html') && !currentUser) {
@@ -121,6 +131,8 @@ function checkAuth() {
                 // Add event listener to logout button
                 document.getElementById('logoutBtn').addEventListener('click', function() {
                     localStorage.removeItem('currentUser');
+                    localStorage.removeItem('sessionUser');
+
                     window.location.href = 'index.html';
                 });
             }
@@ -137,7 +149,8 @@ function checkAuth() {
 }
 
 // Function to add chat message
-function addChatMessage(message, isCurrentUser = true, username = null, isSystem = false, saveToStorage = true) {
+function addChatMessage(message, isCurrentUser = true, username = null, isSystem = false, saveToStorage = true, autoSave = false) {
+
     const chatMessages = document.getElementById('chatMessages');
     if (!chatMessages) return;
 
@@ -176,6 +189,19 @@ function addChatMessage(message, isCurrentUser = true, username = null, isSystem
 
         // Save message to localStorage
         if (saveToStorage && !isSystem) {
+            if (autoSave) {
+                const autoSavedMessages = JSON.parse(localStorage.getItem('autoSavedMessages')) || [];
+                autoSavedMessages.push({
+                    id: messageId,
+                    message,
+                    isCurrentUser,
+                    username: displayName,
+                    timestamp: new Date().toISOString(),
+                    time
+                });
+                localStorage.setItem('autoSavedMessages', JSON.stringify(autoSavedMessages));
+            }
+
             const messages = loadMessages(currentChannel);
             messages.push({
                 id: messageId,
