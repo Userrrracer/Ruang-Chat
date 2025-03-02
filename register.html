@@ -9,60 +9,48 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <title>Pendaftaran - Forum Chat Toress</title>
 </head>
-<body class="bg-light">
+<body class="register-body">
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-5">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="text-center mb-0">Pendaftaran Pengguna</h3>
+            <div class="col-md-6">
+                <div class="card register-card">
+                    <div class="card-header register-header">
+                        <h1 class="text-center">Pendaftaran Pengguna</h1>
                     </div>
-                    <div class="card-body p-4">
-
+                    <div class="card-body">
                         <div class="text-center mb-4">
-                            <i class="bi bi-person-plus display-4 text-primary"></i>
+                            <div class="register-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
                         </div>
-
                         <form id="registerForm">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                    <input type="text" class="form-control" id="username" placeholder="Masukkan username" required>
-                                </div>
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" id="username" placeholder="Username" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                    <input type="email" class="form-control" id="email" placeholder="Masukkan email" required>
-                                </div>
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" placeholder="Email" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                                    <input type="password" class="form-control" id="password" placeholder="Masukkan password" required>
-                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-person-plus"></i> Daftar
+                            <div class="mb-3 input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-register btn-lg w-100">Daftar</button>
+                            </div>
                         </form>
-                        <div class="text-center mt-4">
-                            <p class="mb-2">Sudah punya akun? <a href="login.html" class="text-decoration-none">Login disini</a></p>
-                            <a href="index.html" class="btn btn-outline-secondary btn-sm">
-                                <i class="bi bi-house-door"></i> Kembali ke Beranda
+                        <div class="mt-4 text-center">
+                            <p>Sudah punya akun? <a href="login.html" class="login-link">Login disini</a></p>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="index.html" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-home"></i> Kembali ke Beranda
                             </a>
                         </div>
-
                     </div>
                 </div>
             </div>
