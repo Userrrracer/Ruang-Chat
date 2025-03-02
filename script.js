@@ -2,40 +2,21 @@
 const registerForm = document.getElementById('registerForm');
 const loginForm = document.getElementById('loginForm');
 const categoryList = document.getElementById('categoryList');
-const chatInput = document.getElementById('chatInput');
-const sendMessageBtn = document.getElementById('sendMessageBtn');
-const chatMessages = document.getElementById('chatMessages');
-const loginPrompt = document.getElementById('loginPrompt');
-const onlineCount = document.getElementById('onlineCount');
+const postList = document.getElementById('postList');
+const newPostBtn = document.getElementById('newPostBtn');
 
-// Daftar pengguna online
-let onlineUsers = [];
-let currentChannel = 'emel';
+// Random user names for simulation
+const randomUsers = ['User123', 'ChatFan', 'ForumLover', 'Diskusi01', 'ToressUser', 'NewUser1', 'NewUser2'];
 
 // Function to save user data in localStorage
 if (registerForm) {
     registerForm.addEventListener('submit', function(event) {
         event.preventDefault();
+    
 
-        const username = document.getElementById('username').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value.trim();
-
-        // Validate inputs
-        if (!username || !email || !password) {
-            showError('Semua field harus diisi');
-            return;
-        }
-
-        if (!validateEmail(email)) {
-            showError('Format email tidak valid');
-            return;
-        }
-
-        if (password.length < 6) {
-            showError('Password harus minimal 6 karakter');
-            return;
-        }
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
         // Get existing users or create empty array
         const users = JSON.parse(localStorage.getItem('users')) || [];
@@ -43,7 +24,7 @@ if (registerForm) {
         // Check if user already exists
         const userExists = users.find(user => user.email === email);
         if (userExists) {
-            showError('Email sudah terdaftar. Silakan gunakan email lain.');
+            alert('Email sudah terdaftar. Silakan gunakan email lain.');
             return;
         }
 
@@ -51,32 +32,23 @@ if (registerForm) {
         users.push({
             username,
             email,
-            password
+            password // In a real app, you should hash this password
         });
 
         // Save updated users array
         localStorage.setItem('users', JSON.stringify(users));
 
-        showSuccess('Pendaftaran berhasil! Silakan login.');
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 1500);
+        alert('Pendaftaran berhasil! Silakan login.');
+        window.location.href = 'login.html';
     });
 }
 
-// Function to handle user login
 if (loginForm) {
     loginForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value.trim();
-
-        // Validate inputs
-        if (!email || !password) {
-            showLoginError('Email dan password harus diisi');
-            return;
-        }
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
 
         // Get users from localStorage
         const users = JSON.parse(localStorage.getItem('users')) || [];
@@ -88,441 +60,554 @@ if (loginForm) {
             // Save logged in user info
             localStorage.setItem('currentUser', JSON.stringify({
                 username: user.username,
-                email: user.email,
-                lastSeen: new Date().toISOString()
+                email: user.email
             }));
 
-            showLoginSuccess('Login berhasil! Mengarahkan ke forum...');
-            setTimeout(() => {
-                window.location.href = 'forum.html';
-            }, 1500);
+            alert('Login berhasil!');
+            window.location.href = 'forum.html';
         } else {
-            showLoginError('Email atau password salah!');
+            alert('Email atau password salah!');
         }
     });
 }
 
-// Check auth status and enable/disable chat
+// Function to check online users
+function updateOnlineUsers() {
+    const onlineUsers = JSON.parse(localStorage.getItem('onlineUsers')) || [];
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+    const userStatus = document.getElementById('userStatus');
+
+    if (userStatus) {
+        if (currentUser) {
+            userStatus.innerHTML = currentUser.username + ' (Anda)';
+        } else {
+            userStatus.innerHTML = 'Tidak ada pengguna online';
+        }
+
+    }
+}
+
+
 function checkAuth() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    console.log('Checking auth status:', currentUser);
 
-    if (currentUser) {
-        console.log('User is logged in:', currentUser);
-        
-        // Enable chat input and buttons
-        if (chatInput) {
-            chatInput.disabled = false;
-            chatInput.placeholder = 'Ketik pesan...';
-        }
-        
-        if (sendMessageBtn) {
-            sendMessageBtn.disabled = false;
-            sendMessageBtn.classList.remove('disabled');
-        }
-        
-        document.querySelectorAll('.emoji-btn').forEach(btn => {
-            btn.disabled = false;
-            btn.classList.remove('disabled');
-        });
-        
-        const fileInput = document.querySelector('#fileInput');
-        if (fileInput) {
-            fileInput.disabled = false;
-            const label = fileInput.closest('label');
-            if (label) label.classList.remove('disabled');
-        }
-
-        // Hide login prompt
-        if (loginPrompt) {
-            loginPrompt.style.display = 'none';
-        }
-
-        // Add user to online users
-        addOnlineUser(currentUser);
-
-        // Initialize chat interface
-        initializeChat();
-
-        return true;
-    } else {
-        console.log('No user logged in');
-        
-        // Disable chat input and buttons
-        if (chatInput) {
-            chatInput.disabled = true;
-            chatInput.placeholder = 'Silakan login untuk mengirim pesan';
-        }
-        
-        if (sendMessageBtn) {
-            sendMessageBtn.disabled = true;
-            sendMessageBtn.classList.add('disabled');
-        }
-        
-        document.querySelectorAll('.emoji-btn').forEach(btn => {
-            btn.disabled = true;
-            btn.classList.add('disabled');
-        });
-        
-        const fileInput = document.querySelector('#fileInput');
-        if (fileInput) {
-            fileInput.disabled = true;
-            const label = fileInput.closest('label');
-            if (label) label.classList.add('disabled');
-        }
-
-        // Show login prompt
-        if (loginPrompt) {
-            loginPrompt.style.display = 'block';
-        }
-
-        // Redirect to login if on forum page
-        if (window.location.pathname.includes('forum.html')) {
-            window.location.href = 'login.html';
-        }
-
+    // If on forum page and not logged in, redirect to login
+    if (window.location.pathname.includes('forum.html') && !currentUser) {
+        alert('Silakan login terlebih dahulu.');
+        window.location.href = 'login.html';
         return false;
     }
-}
 
-// Initialize chat interface
-function initializeChat() {
-    console.log('Initializing chat interface');
-    
-    // Load existing messages for current channel
-    const messages = loadMessages(currentChannel);
-    if (chatMessages) {
-        chatMessages.innerHTML = '';
-        messages.forEach(message => {
-            addMessage(message, message.isCurrentUser);
+    // Hide login/register links if user is logged in
+    if (currentUser) {
+        const loginLinks = document.querySelectorAll('a[href="login.html"], a[href="register.html"]');
+        loginLinks.forEach(link => {
+            const parentLi = link.closest('li');
+            if (parentLi) {
+                parentLi.style.display = 'none';
+            }
         });
-    }
 
-    // Set initial active channel
-    const channels = document.querySelectorAll('#channelList .list-group-item');
-    channels.forEach(channel => {
-        if (channel.getAttribute('data-channel') === currentChannel) {
-            channel.classList.add('active');
+        // Add logout button if it doesn't exist
+        if (!document.getElementById('logoutBtn')) {
+            const navPills = document.querySelector('.nav-pills');
+            if (navPills) {
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item';
+                logoutLi.innerHTML = `<a href="#" id="logoutBtn" class="nav-link active">Logout (${currentUser.username})</a>`;
+                navPills.appendChild(logoutLi);
+
+                // Add event listener to logout button
+                document.getElementById('logoutBtn').addEventListener('click', function() {
+                    localStorage.removeItem('currentUser');
+                    window.location.href = 'index.html';
+                });
+            }
         }
-    });
 
-    // Update badges
-    updateChannelBadges();
-}
-
-// Update online users list
-function updateOnlineUsers() {
-    const usersList = document.getElementById('onlineUsers');
-    if (!usersList) return;
-
-    usersList.innerHTML = '';
-    onlineUsers.forEach(user => {
-        const userItem = document.createElement('li');
-        userItem.className = 'list-group-item d-flex align-items-center';
-        userItem.innerHTML = `
-            <span class="online-indicator"></span>
-            ${user.username}
-            ${user.isAdmin ? '<span class="badge bg-primary ms-auto">Admin</span>' : ''}
-        `;
-        usersList.appendChild(userItem);
-    });
-
-    // Update online count
-    if (onlineCount) {
-        onlineCount.textContent = onlineUsers.length;
+        // Update user profile section
+        updateUserProfile(currentUser);
     }
-}
 
-// Add user to online users list
-function addOnlineUser(user) {
-    if (!onlineUsers.find(u => u.username === user.username)) {
-        onlineUsers.push({
-            username: user.username,
-            isAdmin: user.username === 'Raymondo',
-            lastSeen: new Date().toISOString()
-        });
-        updateOnlineUsers();
-    }
-}
-
-// Remove user from online users list
-function removeOnlineUser(username) {
-    onlineUsers = onlineUsers.filter(u => u.username !== username);
+    // Update online users
     updateOnlineUsers();
+
+    return true;
 }
 
-// Load messages from localStorage
-function loadMessages(channel) {
-    return JSON.parse(localStorage.getItem(`messages_${channel}`)) || [];
-}
-
-// Save messages to localStorage
-function saveMessages(channel, messages) {
-    localStorage.setItem(`messages_${channel}`, JSON.stringify(messages));
-}
-
-// Format time for messages
-function formatTime(date) {
-    const now = new Date();
-    const messageDate = new Date(date);
-    
-    if (messageDate.toDateString() === now.toDateString()) {
-        return messageDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    } else {
-        return messageDate.toLocaleDateString('id-ID', { 
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-}
-
-// Format message text
-function formatMessageText(text) {
-    // Convert URLs to clickable links
-    text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
-    
-    // Convert emojis to larger size
-    text = text.replace(/(\p{Emoji})/gu, '<span class="large-emoji">$1</span>');
-    
-    return text;
-}
-
-// Add message to chat
-function addMessage(message, isCurrentUser = true) {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser && isCurrentUser) return;
+// Function to add chat message
+function addChatMessage(message, isCurrentUser = true, username = null, isSystem = false, saveToStorage = true) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
 
     const messageElement = document.createElement('div');
-    messageElement.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
-    
-    const time = new Date();
-    const messageId = Date.now().toString();
+    const time = formatTime();
+    const messageId = Date.now().toString(); // Unique ID for the message
     messageElement.dataset.messageId = messageId;
 
-    // Format message text
-    const formattedText = formatMessageText(message.text);
-    
-    messageElement.innerHTML = `
-        <div class="message-header">
-            <strong>${isCurrentUser ? currentUser.username : message.username}</strong>
-            <small class="message-time">${formatTime(time)}</small>
-        </div>
-        <div class="message-content">${formattedText}</div>
-        <div class="message-footer">
-            ${isCurrentUser ? '<span class="message-status">✓✓</span>' : ''}
-            ${isCurrentUser ? `
-                <button class="btn-delete-message" onclick="deleteMessage('${messageId}')">
-                    <i class="bi bi-trash"></i>
-                </button>
-            ` : ''}
-        </div>
-    `;
-    
-    // Add animation for new messages
-    messageElement.style.opacity = '0';
-    messageElement.style.transform = 'translateY(20px)';
-    messageElement.style.transition = 'all 0.3s ease';
-    
-    requestAnimationFrame(() => {
-        messageElement.style.opacity = '1';
-        messageElement.style.transform = 'translateY(0)';
-    });
+    if (isSystem) {
+        messageElement.className = 'message system-message';
+        messageElement.innerHTML = `
+            <div class="message-content">${message}</div>
+        `;
+    } else {
+        messageElement.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
+
+        const currentUser = JSON.parse(localStorage.getItem('currentUser')) || { username: 'Guest' };
+        const displayName = username || (isCurrentUser ? currentUser.username : 'Lain');
+
+        // Only show delete button for user's own messages
+        const deleteButton = isCurrentUser ? 
+            `<button class="btn-delete-message" data-message-id="${messageId}">
+                <i class="bi bi-trash"></i>
+             </button>` : '';
+
+        messageElement.innerHTML = `
+            <div class="message-header">
+                <strong>${displayName}</strong>
+                <div class="message-actions">
+                    <small>${time}</small>
+                    ${deleteButton}
+                </div>
+            </div>
+            <div class="message-content">${message}</div>
+        `;
+
+        // Save message to localStorage
+        if (saveToStorage && !isSystem) {
+            const messages = loadMessages(currentChannel);
+            messages.push({
+                id: messageId,
+                message,
+                isCurrentUser,
+                username: displayName,
+                timestamp: new Date().toISOString(),
+                time
+            });
+            saveMessages(currentChannel, messages);
+        }
+
+        // Add event listener for delete button
+        setTimeout(() => {
+            const deleteBtn = messageElement.querySelector('.btn-delete-message');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    deleteMessage(messageId);
+                });
+            }
+        }, 0);
+    }
 
     chatMessages.appendChild(messageElement);
+
+    // Scroll to the bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    // Save message
-    const messages = loadMessages(currentChannel);
-    messages.push({
-        id: messageId,
-        text: message.text,
-        username: isCurrentUser ? currentUser.username : message.username,
-        timestamp: time.toISOString(),
-        isCurrentUser,
-        isRead: isCurrentUser
-    });
-    saveMessages(currentChannel, messages);
-
-    // Update badges
-    updateChannelBadges();
 }
 
-// Delete message
+// Function to delete a message
 function deleteMessage(messageId) {
+    // Confirm deletion
     if (confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
-        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        // Remove from UI
+        const messageElement = document.querySelector(`.message[data-message-id="${messageId}"]`);
         if (messageElement) {
+            // Fade out effect
             messageElement.style.opacity = '0';
             messageElement.style.transform = 'scale(0.8)';
             
             setTimeout(() => {
                 messageElement.remove();
                 
-                // Update messages in localStorage
-                const messages = loadMessages(currentChannel);
-                const messageIndex = messages.findIndex(msg => msg.id === messageId);
-                if (messageIndex !== -1) {
-                    messages.splice(messageIndex, 1);
-                    saveMessages(currentChannel, messages);
+                // Show deletion notification
+                const systemMessage = document.createElement('div');
+                systemMessage.className = 'message system-message deletion-notification';
+                systemMessage.innerHTML = `<div class="message-content">Pesan telah dihapus</div>`;
+                
+                const chatMessages = document.getElementById('chatMessages');
+                if (chatMessages) {
+                    chatMessages.appendChild(systemMessage);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Remove notification after a delay
+                    setTimeout(() => {
+                        systemMessage.style.opacity = '0';
+                        setTimeout(() => systemMessage.remove(), 500);
+                    }, 3000);
                 }
             }, 300);
         }
+        
+        // Remove from localStorage
+        const messages = loadMessages(currentChannel);
+        const messageIndex = messages.findIndex(msg => msg.id === messageId);
+        
+        if (messageIndex !== -1) {
+            messages.splice(messageIndex, 1);
+            saveMessages(currentChannel, messages);
+            
+            // Update category post counts
+            updateCategoryPostCounts();
+        }
     }
 }
 
-// Update channel badges
-function updateChannelBadges() {
-    const channels = document.querySelectorAll('#channelList .list-group-item');
-    channels.forEach(channelItem => {
-        const channel = channelItem.getAttribute('data-channel');
-        const badge = channelItem.querySelector('.badge');
-        
-        if (badge) {
-            if (channel === currentChannel) {
-                // Reset badge for active channel
-                badge.textContent = '0';
-                badge.classList.remove('bg-danger');
-            } else {
-                // Count unread messages for other channels
-                const messages = loadMessages(channel);
-                const unreadCount = messages.filter(msg => !msg.isRead).length;
-                badge.textContent = unreadCount;
-                
-                // Add visual indicator for unread messages
-                if (unreadCount > 0) {
-                    badge.classList.add('bg-danger');
-                } else {
-                    badge.classList.remove('bg-danger');
-                }
-            }
+// Function to change channel
+function changeChannel(channel) {
+    currentChannel = channel;
+    const channelNameElement = document.getElementById('currentChannel');
+    if (channelNameElement) {
+        channelNameElement.textContent = channel.charAt(0).toUpperCase() + channel.slice(1);
+    }
+
+    // Clear chat messages
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
+
+    // Add welcome message
+    addChatMessage(`Selamat datang di channel ${channel}!`, false, 'Admin', true, false);
+
+    // Load messages from localStorage
+    const messages = loadMessages(channel);
+
+    if (messages.length === 0) {
+        // Add welcome message if no messages
+        const channelMessages = {
+            emel: [
+                { user: 'Admin', message: 'Silahkan diskusi apapun di sini!' }
+            ],
+            sekolah: [
+                { user: 'Admin', message: 'Channel untuk diskusi sekolah' }
+            ],
+            running: [
+                { user: 'Admin', message: 'Channel untuk diskusi olahraga' }
+            ],
+            musik: [
+                { user: 'Admin', message: 'Channel untuk diskusi musik' }
+            ],
+            all: [
+                { user: 'Admin', message: 'Channel untuk diskusi all topik' }
+            ]
+        };
+
+        // Add sample messages and save them
+        if (channelMessages[channel]) {
+            channelMessages[channel].forEach(msg => {
+                addChatMessage(msg.message, false, msg.user, false, true);
+            });
+        }
+    } else {
+        // Display saved messages
+        messages.forEach(msg => {
+            // Make sure we use the message ID if it exists
+            const messageElement = document.createElement('div');
+            const messageId = msg.id || Date.now().toString();
+            messageElement.dataset.messageId = messageId;
+            
+            addChatMessage(
+                msg.message,
+                msg.isCurrentUser,
+                msg.username,
+                false,
+                false // Don't save again
+            );
+        });
+    }
+
+    // Update active channel in UI
+    const channelItems = document.querySelectorAll('#channelList .list-group-item');
+    channelItems.forEach(item => {
+        if (item.getAttribute('data-channel') === channel) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
         }
     });
+
+    // Update category post counts
+    updateCategoryPostCounts();
 }
 
-// Mark messages as read
-function markMessagesAsRead(channel) {
-    const messages = loadMessages(channel);
-    const updatedMessages = messages.map(msg => ({
-        ...msg,
-        isRead: true
-    }));
-    saveMessages(channel, updatedMessages);
-    updateChannelBadges();
+// Update category post counts
+function updateCategoryPostCounts() {
+    const channelItems = document.querySelectorAll('#channelList .list-group-item');
+    const badges = document.querySelectorAll('#channelList .badge');
+
+    channelItems.forEach((item, index) => {
+        const channel = item.getAttribute('data-channel');
+        const messages = loadMessages(channel);
+        if (badges[index]) {
+            badges[index].textContent = messages.length;
+        }
+    });
 }
 
 // Handle sending message
-if (sendMessageBtn) {
-    sendMessageBtn.addEventListener('click', () => {
-        const message = chatInput.value.trim();
-        if (message) {
-            addMessage({ text: message }, true);
-            chatInput.value = '';
-            
-            // Play send sound
-            const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAABoYPkyeYAAAAAAAAAAAAAAAAAAAA//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxBYDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxDIDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
-            audio.play();
+function handleSendMessage() {
+    const chatInput = document.getElementById('chatInput');
+    if (!chatInput) return;
+
+    const message = chatInput.value.trim();
+    if (message) {
+        // Add user message
+        addChatMessage(message, true);
+
+        // Clear input
+        chatInput.value = '';
+
+        // Update category post counts
+        updateCategoryPostCounts();
+
+        // Simulate response in certain channels
+        if (Math.random() > 0.6) {
+            setTimeout(() => {
+                const channelResponses = {
+                    emel: [
+                        'Halo! Apa kabar?',
+                        'Selamat datang di forum kami!',
+                        'Terima kasih atas partisipasinya!'
+                    ],
+                    sekolah: [
+                        'Saya juga sedang belajar!',
+                        'Pelajaran apa yang kamu sukai?',
+                        'Mau belajar bersama?'
+                    ],
+                    running: [
+                        'Saya suka lari pagi.',
+                        'Sudah berapa KM lari minggu ini?',
+                        'Olahraga itu menyehatkan!'
+                    ],
+                    musik: [
+                        'Musik apa yang kamu suka?',
+                        'Saya suka mendengarkan pop.',
+                        'Ada rekomendasi lagu baru?'
+                    ],
+                    all: [
+                        'Halo! Apa kabar?',
+                        'Selamat datang di forum kami!',
+                        'Terima kasih atas partisipasinya!'
+                    ]
+                };
+
+                const responses = channelResponses[currentChannel] || channelResponses.emel;
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
+
+                addChatMessage(randomResponse, false, randomUser);
+
+                // Update category post counts after response
+                updateCategoryPostCounts();
+            }, 1000 + Math.random() * 2000);
         }
-    });
+    }
 }
 
-// Handle enter key in chat input
-if (chatInput) {
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessageBtn.click();
-        }
-    });
-}
-
-// Initialize chat
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Document loaded, checking auth...');
-    checkAuth();
-    
-    // Handle channel switching
-    const channels = document.querySelectorAll('#channelList .list-group-item');
-    channels.forEach(channel => {
-        channel.addEventListener('click', () => {
-            const channelName = channel.getAttribute('data-channel');
-            currentChannel = channelName;
-            
-            // Update active channel
-            channels.forEach(c => c.classList.remove('active'));
-            channel.classList.add('active');
-            
-            // Update channel name display
-            document.getElementById('currentChannel').textContent = channelName;
-            
-            // Clear and load messages for new channel
-            chatMessages.innerHTML = '';
-            const channelMessages = loadMessages(channelName);
-            channelMessages.forEach(message => {
-                addMessage(message, message.isCurrentUser);
-            });
-
-            // Mark messages as read
-            markMessagesAsRead(channelName);
-        });
-    });
-
-    // Handle emoji buttons
-    document.querySelectorAll('.emoji-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!chatInput.disabled) {
-                chatInput.value += btn.textContent;
-                chatInput.focus();
-            }
-        });
-    });
-
-    // Handle file upload
+// Function to handle file uploads
+function handleFileUpload() {
     const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', () => {
-            const file = fileInput.files[0];
-            if (file) {
-                addMessage({ text: `📎 File: ${file.name}` }, true);
-                fileInput.value = '';
+    if (fileInput && fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        addChatMessage(`Mengunggah file: ${fileName}...`, true);
+
+        // Simulate upload progress
+        setTimeout(() => {
+            addChatMessage(`File ${fileName} berhasil diunggah!`, false, 'Admin', true);
+        }, 1500);
+
+        // Reset file input
+        fileInput.value = '';
+    }
+}
+
+// Event listeners
+// Function to handle search
+function handleSearch(event) {
+    event.preventDefault();
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    if (!searchQuery) return;
+    
+    // Check if we're on the forum page
+    if (window.location.pathname.includes('forum.html')) {
+        // Search posts
+        const posts = loadPosts();
+        const filteredPosts = posts.filter(post => 
+            post.title.toLowerCase().includes(searchQuery) || 
+            post.content.toLowerCase().includes(searchQuery) ||
+            post.author.toLowerCase().includes(searchQuery) ||
+            post.category.toLowerCase().includes(searchQuery)
+        );
+        
+        // Clear post list
+        const postListElem = document.getElementById('postList');
+        if (postListElem) {
+            postListElem.innerHTML = '';
+            
+            if (filteredPosts.length > 0) {
+                // Display filtered posts
+                filteredPosts.forEach(post => {
+                    const postElement = createPostElement(post);
+                    postListElem.appendChild(postElement);
+                });
+            } else {
+                // No results found
+                postListElem.innerHTML = `
+                    <div class="alert alert-info">
+                        Tidak ada hasil untuk pencarian "${searchQuery}". 
+                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="displayPosts()">Tampilkan Semua</button>
+                    </div>
+                `;
             }
-        });
+        }
+    } else {
+        // Redirect to forum page with search query
+        window.location.href = `forum.html?search=${encodeURIComponent(searchQuery)}`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize posts
+    initializePosts();
+
+    // Check auth status
+    const isLoggedIn = checkAuth();
+    
+    // Add search functionality
+    const searchForm = document.querySelector('form[role="search"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', handleSearch);
+    }
+    
+    // Check for search query in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get('search');
+    if (searchQuery && document.getElementById('searchInput')) {
+        document.getElementById('searchInput').value = searchQuery;
+        // Trigger search after a short delay to allow page to load
+        setTimeout(() => handleSearch(new Event('submit')), 500);
     }
 
-    // Update badges initially
-    updateChannelBadges();
+    if (isLoggedIn) {
+        // Set current username in the UI
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const currentUsername = document.getElementById('currentUsername');
+        if (currentUser && currentUsername) {
+            currentUsername.textContent = currentUser.username;
+        }
+
+        // Display posts
+        displayPosts();
+
+        // New post button functionality
+        if (newPostBtn) {
+            newPostBtn.addEventListener('click', createNewPost);
+        }
+
+        // Chat send message button
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        if (sendMessageBtn) {
+            sendMessageBtn.addEventListener('click', handleSendMessage);
+        }
+
+        // Chat input enter key
+        const chatInput = document.getElementById('chatInput');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+
+            // Focus on chat input when page loads
+            chatInput.focus();
+        }
+
+        // Channel selection
+        const channelItems = document.querySelectorAll('#channelList .list-group-item');
+        channelItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const channel = this.getAttribute('data-channel');
+                if (channel) {
+                    changeChannel(channel);
+                }
+            });
+        });
+
+        // Emoji buttons
+        const emojiButtons = document.querySelectorAll('.emoji-btn');
+        emojiButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                addEmojiToInput(this.textContent);
+            });
+        });
+
+        // Add event listeners to all comment buttons
+        document.querySelectorAll('.comment-btn').forEach(button => {
+            button.addEventListener('click', handleCommentClick);
+        });
+
+        // Add event listeners to all like buttons
+        document.querySelectorAll('.like-btn').forEach(button => {
+            button.addEventListener('click', handleLikeClick);
+        });
+
+        // Initialize with default channel
+        if (document.getElementById('chatMessages')) {
+            changeChannel('emel');
+        }
+
+        // Toggle user status
+        const userStatus = document.getElementById('userStatus');
+        if (userStatus) {
+            userStatus.addEventListener('click', function() {
+                if (this.textContent === 'Online') {
+                    this.textContent = 'Away';
+                    this.className = 'badge bg-warning';
+                } else if (this.textContent === 'Away') {
+                    this.textContent = 'Offline';
+                    this.className = 'badge bg-secondary';
+                } else {
+                    this.textContent = 'Online';
+                    this.className = 'badge bg-success';
+                }
+            });
+        }
+
+        // Refresh users list
+        const refreshUsersBtn = document.getElementById('refreshUsers');
+        if (refreshUsersBtn) {
+            refreshUsersBtn.addEventListener('click', function() {
+                // Simulate refreshing user list
+                const usersList = document.getElementById('onlineUsers');
+                if (usersList) {
+                    // Show loading state
+                    this.textContent = 'Menyegarkan...';
+                    this.disabled = true;
+
+                    setTimeout(() => {
+                        // Add a random user
+                        const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
+
+                        const newUserItem = document.createElement('li');
+                        newUserItem.className = 'list-group-item d-flex align-items-center';
+                        newUserItem.innerHTML = `
+                            <span class="online-indicator"></span>
+                            ${randomUser}
+                        `;
+
+                        usersList.appendChild(newUserItem);
+
+                        // Reset button
+                        this.textContent = 'Refresh Pengguna';
+                        this.disabled = false;
+
+                        // Show success message in chat
+                        addChatMessage('Daftar pengguna berhasil diperbarui!', false, 'Admin', true);
+                    }, 1000);
+                }
+            });
+        }
+    }
 });
-
-// Helper functions
-function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger mt-3';
-    errorDiv.textContent = message;
-    
-    const form = document.querySelector('form');
-    form.insertBefore(errorDiv, form.firstChild);
-    
-    setTimeout(() => errorDiv.remove(), 3000);
-}
-
-function showSuccess(message) {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'alert alert-success mt-3';
-    successDiv.textContent = message;
-    
-    const form = document.querySelector('form');
-    form.insertBefore(successDiv, form.firstChild);
-}
-
-function showLoginError(message) {
-    showError(message);
-}
-
-function showLoginSuccess(message) {
-    showSuccess(message);
-}
