@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,115 +11,88 @@
 </head>
 
 <body class="p-3 mb-2 bg-secondary text-white">
-<header class="bg-dark text-white py-4">
-    <div class="container">
-        <h1 class="display-4 text-center">Selamat Datang Di Forum Chat Toress
-            <span class="badge bg-primary">New</span>
-        </h1>
-    </div>
-</header>
-
+    <div>
+        <!--HEADER -->
+        <div>
+            <h1 class="h1-footer">Selamat Datang Di Forum Chat Toress<span class="badge text-bg-secondary">New</span></h1>
+        </div>
+        <!-- HEADER END -->
 
         <!-- NAVIGATION BAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
-    <div class="container">
-        <a class="navbar-brand" href="index.html">Forum Chat Toress</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link" href="register.html">Pendaftaran</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="login.html">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="forum.html">Forum Chat</a>
-                </li>
-            </ul>
-            <form class="d-flex" role="search">
-                <input class="form-control me-2" type="search" placeholder="Cari..." aria-label="Search" id="searchInput">
-                <button class="btn btn-light" type="submit" id="searchButton">
-                    <i class="bi bi-search"></i> Cari
-                </button>
-            </form>
+        <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
+            <div class="card text-center">
+                <div class="card-header">
+                    <ul class="nav nav-pills card-header-pills">
+                        <li class="nav-item">
+                            <a href="register.html" class="nav-link active">Pendaftaran</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="login.html" class="nav-link active">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="forum.html" class="nav-link active">Forum Chat</a>
+                        </li>
+                    </ul>
+                    <form class="d-flex" role="search">
+                        <input class="form-control me-2" type="search" placeholder="Cari..." aria-label="Search" id="searchInput">
+                        <button class="btn btn-outline-success" type="submit" id="searchButton">Cari</button>
+                    </form>
+                        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                        <button class="btn btn-outline-success" type="submit">Search</button>
+                    </form>
+                </div>
+            </div>
         </div>
-    </div>
-</nav>
-
         <!-- NAVIGATION BAR END -->
 
         <!-- CONTENT -->
-<main class="container py-5">
-    <section class="hero-section text-center mb-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <h2 class="display-5 mb-4">Selamat Datang di Forum Chat Toress</h2>
-                <p class="lead mb-4">Platform diskusi online untuk berbagi ide, bertukar pikiran, dan terhubung dengan komunitas.</p>
-                <div class="d-grid gap-3 d-md-flex justify-content-center">
-                    <a href="register.html" class="btn btn-primary btn-lg px-4">
-                        <i class="bi bi-person-plus"></i> Daftar Sekarang
-                    </a>
-                    <a href="login.html" class="btn btn-outline-primary btn-lg px-4">
-                        <i class="bi bi-box-arrow-in-right"></i> Masuk
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="features-section">
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-chat-dots display-6 mb-3 text-primary"></i>
-                        <h3 class="card-title mb-3">Diskusi Real-time</h3>
-                        <p class="card-text">Bergabunglah dalam berbagai diskusi menarik secara langsung dengan pengguna lain.</p>
+        <div class="div-content">
+            <div class="container py-5">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2 text-center">
+                        <h2 class="mb-4">Selamat Datang di Forum Chat Toress</h2>
+                        <p class="lead mb-4">Platform diskusi online untuk berbagi ide, bertukar pikiran, dan terhubung dengan komunitas.</p>
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="register.html" class="btn btn-lg btn-primary">Daftar Sekarang</a>
+                            <a href="login.html" class="btn btn-lg btn-outline-light">Masuk</a>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-tags display-6 mb-3 text-primary"></i>
-                        <h3 class="card-title mb-3">Berbagai Kategori</h3>
-                        <p class="card-text">Pilih dari berbagai topik yang menarik minat Anda, mulai dari teknologi hingga kuliner.</p>
+                <div class="row mt-5">
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title text-dark">Diskusi Real-time</h3>
+                                <p class="card-text text-dark">Bergabunglah dalam berbagai diskusi menarik secara langsung dengan pengguna lain.</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-people display-6 mb-3 text-primary"></i>
-                        <h3 class="card-title mb-3">Komunitas Aktif</h3>
-                        <p class="card-text">Bergabunglah dengan komunitas pengguna yang aktif dan bersahabat.</p>
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title text-dark">Berbagai Kategori</h3>
+                                <p class="card-text text-dark">Pilih dari berbagai topik yang menarik minat Anda, mulai dari teknologi hingga kuliner.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title text-dark">Komunitas Aktif</h3>
+                                <p class="card-text text-dark">Bergabunglah dengan komunitas pengguna yang aktif dan bersahabat.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-</main>
-
         <!-- CONTENT END -->
     
         <!-- FOOTER -->
-<footer class="bg-dark text-white py-4 mt-5">
-    <div class="container text-center">
-        <div class="social-links mb-3">
-            <a href="#" class="text-white me-3">
-                <i class="bi bi-whatsapp"></i> Whatsapp
-            </a>
-            <a href="#" class="text-white">
-                <i class="bi bi-instagram"></i> Instagram
-            </a>
+        <div class="div-footer">
+            <p class="p-footer">Whatsapp</p>
+            <p class="p-footer">Instagram</p>
         </div>
-        <p class="mb-0">&copy; 2023 Forum Chat Toress. All rights reserved.</p>
-    </div>
-</footer>
-
         <!-- FOOTER END -->
     </div>
     <script src="script.js"></script>
